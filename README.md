@@ -1,4 +1,4 @@
-# NN-based Fingerprinting Scheme for Relational Data
+# Neighbourhood-based Fingerprinting Scheme for Relational Data
 
 This is the original implementation of fingerprinting technique from Sarcevic at al. [1].
 
