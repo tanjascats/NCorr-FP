@@ -42,10 +42,21 @@ def import_dataset(dataset_name):
 
 
 def import_dataset_from_file(data_path, primary_key_attribute=None):
-    dataset = pd.read_csv(data_path)
+    # preset datasets
+    root = os.path.dirname(os.path.abspath(__file__))
+    if data_path == 'breast-cancer':
+        dataset = pd.read_csv(root + "/datasets/breast_cancer_full.csv")
+        primary_key_attribute = 'Id'
+    elif data_path == 'adult':
+        dataset = pd.read_csv(root + "/datasets/adult_id.csv")
+        primary_key_attribute = 'Id'
+    # other datasets require relative path
+    else:
+        dataset = pd.read_csv(data_path)
+
     if primary_key_attribute is not None:
         primary_key = dataset[primary_key_attribute]
-        dataset.drop(primary_key_attribute)
+        #dataset = dataset.drop(primary_key_attribute, axis=1)
     else:
         primary_key = dataset.index
     # todo: check if the primary_key is unique
@@ -133,7 +144,7 @@ def _read_data(dataset, primary_key_attribute=None, target_attribute=None):
     elif isinstance(dataset, Dataset):
         relation = dataset
     else:
-        print('Wrong type of input data.')
+        print('Error [utils._read_data]: Wrong type of input data: ' + str(type(dataset)))
         exit()
     return relation
 

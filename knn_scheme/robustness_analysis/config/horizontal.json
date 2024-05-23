@@ -1,0 +1,9 @@
+{
+  "data": "breast-cancer",
+  "n_experiments": 10,
+  "n_fp_experiments": 10,
+  "gamma": 5,
+  "xi": 2,
+  "fingerprint_bit_length": 16,
+  "correlated_attributes": ["age", "menopause", "inv-nodes", "node-caps"]
+}

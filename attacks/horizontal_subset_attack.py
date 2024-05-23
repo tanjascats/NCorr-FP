@@ -1,6 +1,5 @@
 from attacks.attack import Attack
 import time
-import random
 
 
 class HorizontalSubsetAttack(Attack):
