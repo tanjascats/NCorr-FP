@@ -237,7 +237,7 @@ class BlindNNScheme():
             fingerprinted_relation.to_csv(outfile, index=False)
         return fingerprinted_relation
 
-    def detection(self, dataset, secret_key, primary_key=None, correlated_attributes=None):
+    def detection(self, dataset, secret_key, primary_key=None, correlated_attributes=None, original_columns=None):
         print("Start blind detection algorithm of fingerprinting scheme for categorical data (neighbourhood)...")
         print("\tgamma: " + str(self.gamma) + "\n\txi: " + str(self.xi))
 
@@ -258,7 +258,7 @@ class BlindNNScheme():
         tot_attributes = number_of_num_attributes + number_of_cat_attributes
         categorical_attributes = relation_fp.dataframe.select_dtypes(include='object').columns
 
-        # todo: address checking for the missing columns (defense against vertical attack)
+        # here we address checking for the missing columns (defense against vertical attack)
         # if not relation_orig.columns.equals(relation_fp.columns):
         #    print(relation_fp.columns)
         #    difference = relation_orig.columns.difference(relation_fp.columns)
@@ -266,6 +266,18 @@ class BlindNNScheme():
         #        relation_fp[diff] = relation_orig[diff]
         # bring back the original order of columns
         # relation_fp = relation_fp[relation_orig.columns.tolist()]
+        attacked_columns = []
+        if original_columns is not None:  # aligning with original schema (in case of vertical attacks)
+            if "Id" in original_columns:
+                original_columns.remove("Id")  # just in case
+            for orig_col in original_columns:
+                if orig_col not in relation_fp.columns:
+                    # fill in
+                    relation_fp.dataframe[orig_col] = 0
+                    attacked_columns.append(orig_col)
+            # rearrange in the original order
+            relation_fp.dataframe = relation_fp.dataframe[["Id"] + original_columns]
+            tot_attributes += len(attacked_columns)
 
         # encode the categorical values
         label_encoders = dict()
@@ -300,6 +312,8 @@ class BlindNNScheme():
                 # this attribute was marked (skip the primary key)
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # add 1 to skip the primary key
                 attr_name = r[1].index[attr_idx]
+                if attr_name in attacked_columns:  # if this columns was deleted by VA, don't collect the votes
+                    continue  # todo: testing efficacy against vertical attack -- maybe, if this attribute was deleted, don't collect the votes!
                 attribute_val = r[1][attr_idx]
                 # fingerprint bit
                 fingerprint_idx = random.randint(0, _MAXINT) % self.fingerprint_bit_length
@@ -313,6 +327,7 @@ class BlindNNScheme():
                 # todo: consider this: if there is only one possible attribute in the neighbourhood then the value
                 # # # could have been both 0 and 1 equally likely. therefore, give votes to both.
                 # selecting attributes for knn search -> this is user specified
+                # todo: here we can exclude imputed columns to overcome errors in vertical attack
                 if attr_name in correlated_attributes:
                     other_attributes = correlated_attributes.tolist().copy()
                     other_attributes.remove(attr_name)

@@ -4,74 +4,102 @@
 import random
 from datetime import datetime
 import numpy as np
+import json
 
-from attacks import VerticalSubsetAttack
+from attacks.vertical_subset_attack import VerticalSubsetAttack
 from knn_scheme.scheme import CategoricalNeighbourhood
+from knn_scheme.experimental.blind_scheme import BlindNNScheme
 
-n_experiments = 10  # (20) number of times we attack the same fingerprinted file
-n_fp_experiments = 30  # (50) number of times we run fp insertion
 
-size_of_subset = np.array([i for i in range(20)])  # number of columns to be DELETED
-results = []
-gamma = 3; xi = 2; fingerprint_bit_length = 8
+def run():
+    config_file = "config/vertical.json"
+    with open(config_file) as infile:
+        config = json.load(infile)
+    #n_experiments = 10  # (20) number of times we attack the same fingerprinted file
+    #n_fp_experiments = 30  # (50) number of times we run fp insertion
 
-scheme = CategoricalNeighbourhood(gamma=gamma, xi=xi, fingerprint_bit_length=fingerprint_bit_length)
-attack = VerticalSubsetAttack()
-data = 'german_credit'
+    size_of_subset = np.array(config['size_of_subset'])  # number of columns to be DELETED
+    # size_of_subset = np.array([i for i in range(20)])  # number of columns to be DELETED
+    results = []
+    #gamma = 3; xi = 2; fingerprint_bit_length = 8
 
-f = open("robustness_analysis/categorical_neighbourhood/log/vertical_subset_attack_" + data + ".txt", "a+")
+    scheme = BlindNNScheme(gamma=config['gamma'],
+                           xi=config['xi'],
+                           fingerprint_bit_length=config['fingerprint_bit_length'])
+    attack = VerticalSubsetAttack()
+    #data = 'german_credit'
 
-for size in size_of_subset:
-    # for reproducibility
-    seed = 332
-    random.seed(seed)
+    timestamp = str(datetime.fromtimestamp(int(datetime.timestamp(datetime.now())))).replace(' ', '-').replace(':','-')
+    f = open("log/"
+             "vertical_subset_attack_{}_{}.txt".format(config['data'], timestamp), "a+")
 
-    correct, misdiagnosis = 0, 0
-    for i in range(n_fp_experiments):
-        # fingerprint the data
-        secret_key = random.randint(0, 1000)
-        fp_dataset = scheme.insertion(dataset_name=data, buyer_id=1, secret_key=secret_key)
+    done = False
+    for size in size_of_subset:
+        if not done:
+            # for reproducibility
+            seed = 332
+            random.seed(seed)
 
-        for j in range(n_experiments):
-            # perform the attack
-            release_data = attack.run_random(dataset=fp_dataset, number_of_columns=size)
-            # try to extract the fingerprint
-            suspect = scheme.detection(dataset_name=data, real_buyer_id=1, secret_key=secret_key,
-                                dataset=release_data)
-            if suspect == 1:
-                correct += 1
-            elif suspect != -1:
-                    misdiagnosis += 1
+            correct, misdiagnosis = 0, 0
+            for i in range(config['n_fp_experiments']):
+                # fingerprint the data
+                secret_key = random.randint(0, 1000)
+                fp_dataset = scheme.insertion(dataset_name=config['data'],
+                                                  recipient_id=1, secret_key=secret_key,
+                                                  correlated_attributes=config['correlated_attributes'])
 
-    #print("\n\n--------------------------------------------------------------\n\n")
-    #print("Data: german credit")
-    #print("(size of subset, gamma, xi, length of a fingerprint): " + str((size, gamma, xi, fingerprint_bit_length)))
-    #print("Correct: " + str(correct) + "/" + str(n_experiments*n_fp_experiments))
-    #print("Wrong: " + str(n_experiments*n_fp_experiments - correct) + "/" + str(n_experiments*n_fp_experiments)
-    #      + "\n\t- out of which misdiagnosed: " + str(misdiagnosis))
+                for j in range(config['n_experiments']):
+                    # perform the attack
+                    release_data = attack.run_random(dataset=fp_dataset, number_of_columns=size, random_state=secret_key+j)
+                    # try to extract the fingerprint
+                    suspect = scheme.detection(release_data,
+                                                primary_key='Id',
+                                                secret_key=secret_key,
+                                                correlated_attributes=config['correlated_attributes'],
+                                               original_columns=config['original_columns'])
+                    if suspect == 1:
+                        correct += 1
+                    elif suspect != -1:
+                            misdiagnosis += 1
 
-    # write to log file
+            print("\n\n--------------------------------------------------------------\n\n")
+            print("Data: " + config['data'])
+            print("(size of subset, gamma, xi, length of a fingerprint): " + str(
+                (size, config['gamma'], config['xi'], config['fingerprint_bit_length'])))
+            print("Correct: " + str(correct) + "/" + str(config['n_experiments'] * config['n_fp_experiments']))
+            print("Wrong: " + str(config['n_experiments'] * config['n_fp_experiments'] - correct) + "/" + str(
+                config['n_experiments'] * config['n_fp_experiments'])
+                  + "\n\t- out of which misdiagnosed: " + str(misdiagnosis))
+
+            # write to log file
+            f.write(str(datetime.fromtimestamp(int(datetime.timestamp(datetime.now())))))
+            f.write("\nseed: " + str(seed))
+            f.write("\nData: " + config['data'])
+            f.write("\n(size of subset, gamma, xi, length of a fingerprint): " + str(
+                (size, config['gamma'], config['xi'], config['fingerprint_bit_length'])))
+            f.write("\nCorrect: " + str(correct) + "/" + str(config['n_experiments'] * config['n_fp_experiments']))
+            f.write("\nWrong: " + str(config['n_experiments'] * config['n_fp_experiments'] - correct) + "/" + str(
+                config['n_experiments'] * config['n_fp_experiments'])
+                    + "\n\t- out of which misdiagnosed: " + str(misdiagnosis))
+            f.write("\n\n--------------------------------------------------------------\n\n")
+
+            results.append(correct)
+
+            # if correct == 0:  # for expected bad robustness
+            if correct == int(config['n_fp_experiments'] * config['n_experiments']):  # for expected good robustness
+                done = True
+        else:
+            # skipping unnecessary calculations since the false miss has already reached the max/min
+            # results.append(0)  # for expected bad robustness
+            results.append(int(config['n_fp_experiments'] * config['n_experiments']))  # for expected good robustness
+
+    f.write("SUMMARY\n")
     f.write(str(datetime.fromtimestamp(int(datetime.timestamp(datetime.now())))))
-    f.write("\nseed: " + str(seed))
-    f.write("\nData: " + data)
-    f.write("\n(size of subset, gamma, xi, length of a fingerprint): " + str((size, gamma, xi,
-                                                                            fingerprint_bit_length)))
-    f.write("\nCorrect: " + str(correct) + "/" + str(n_experiments*n_fp_experiments))
-    f.write("\nWrong: " + str(n_experiments*n_fp_experiments - correct) + "/" + str(n_experiments*n_fp_experiments)
-          + "\n\t- out of which misdiagnosed: " + str(misdiagnosis))
+    f.write("\n(gamma, xi, length of a fingerprint): " + str((config['gamma'], config['xi'], config['fingerprint_bit_length'])))
+    f.write("\nCorrect: " + str(results) + "\n\t/" + str(str(config['n_experiments']*config['n_fp_experiments'])))
     f.write("\n\n--------------------------------------------------------------\n\n")
+    f.close()
 
-    results.append(correct)
 
-f.write("SUMMARY\n")
-f.write(str(datetime.fromtimestamp(int(datetime.timestamp(datetime.now())))))
-f.write("\n(gamma, xi, length of a fingerprint): " + str((gamma, xi, fingerprint_bit_length)))
-f.write("\nCorrect: " + str(results) + "\n\t/" + str(n_experiments * n_fp_experiments))
-f.write("\n\n--------------------------------------------------------------\n\n")
-f.close()
-
-print("SUMMARY\n")
-print(str(datetime.fromtimestamp(int(datetime.timestamp(datetime.now())))))
-print("\n(gamma, xi, length of a fingerprint): " + str((gamma, xi, fingerprint_bit_length)))
-print("\nCorrect: " + str(results) + "\n\t/" + str(n_experiments * n_fp_experiments))
-
+if __name__ == '__main__':
+    run()
