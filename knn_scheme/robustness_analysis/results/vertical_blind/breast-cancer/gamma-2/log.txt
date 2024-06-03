@@ -1,0 +1,98 @@
+2024-05-29 00:07:07
+seed: 332
+Data: breast-cancer
+(size of subset, gamma, xi, length of a fingerprint): (9, 2, 1, 16)
+Correct: 0/20
+Wrong: 20/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-05-29 00:07:13
+seed: 332
+Data: breast-cancer
+(size of subset, gamma, xi, length of a fingerprint): (8, 2, 1, 16)
+Correct: 3/20
+Wrong: 17/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-05-29 00:07:19
+seed: 332
+Data: breast-cancer
+(size of subset, gamma, xi, length of a fingerprint): (7, 2, 1, 16)
+Correct: 2/20
+Wrong: 18/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-05-29 00:07:25
+seed: 332
+Data: breast-cancer
+(size of subset, gamma, xi, length of a fingerprint): (6, 2, 1, 16)
+Correct: 3/20
+Wrong: 17/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-05-29 00:07:32
+seed: 332
+Data: breast-cancer
+(size of subset, gamma, xi, length of a fingerprint): (5, 2, 1, 16)
+Correct: 3/20
+Wrong: 17/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-05-29 00:07:38
+seed: 332
+Data: breast-cancer
+(size of subset, gamma, xi, length of a fingerprint): (4, 2, 1, 16)
+Correct: 7/20
+Wrong: 13/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-05-29 00:07:46
+seed: 332
+Data: breast-cancer
+(size of subset, gamma, xi, length of a fingerprint): (3, 2, 1, 16)
+Correct: 7/20
+Wrong: 13/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-05-29 00:07:53
+seed: 332
+Data: breast-cancer
+(size of subset, gamma, xi, length of a fingerprint): (2, 2, 1, 16)
+Correct: 8/20
+Wrong: 12/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-05-29 00:08:01
+seed: 332
+Data: breast-cancer
+(size of subset, gamma, xi, length of a fingerprint): (1, 2, 1, 16)
+Correct: 9/20
+Wrong: 11/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+SUMMARY
+2024-05-29 00:08:01
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0, 3, 2, 3, 3, 7, 7, 8, 9]
+	/20
+
+--------------------------------------------------------------
+

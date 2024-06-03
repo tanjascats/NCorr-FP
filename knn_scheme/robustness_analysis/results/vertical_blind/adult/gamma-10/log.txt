@@ -1,0 +1,88 @@
+2024-05-29 19:44:28
+seed: 332
+Data: adult
+(size of subset, gamma, xi, length of a fingerprint): (14, 10, 1, 64)
+Correct: 10/20
+Wrong: 10/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-06-03 10:41:44
+seed: 332
+Data: adult
+(size of subset, gamma, xi, length of a fingerprint): (13, 10, 1, 64)
+Correct: 13/20
+Wrong: 7/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-06-03 10:51:13
+seed: 332
+Data: adult
+(size of subset, gamma, xi, length of a fingerprint): (12, 10, 1, 64)
+Correct: 17/20
+Wrong: 3/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-06-03 10:58:09
+seed: 332
+Data: adult
+(size of subset, gamma, xi, length of a fingerprint): (11, 10, 1, 64)
+Correct: 16/20
+Wrong: 4/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-06-03 11:06:12
+seed: 332
+Data: adult
+(size of subset, gamma, xi, length of a fingerprint): (10, 10, 1, 64)
+Correct: 16/20
+Wrong: 4/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-06-03 11:15:41
+seed: 332
+Data: adult
+(size of subset, gamma, xi, length of a fingerprint): (9, 10, 1, 64)
+Correct: 14/20
+Wrong: 6/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-06-03 11:22:27
+seed: 332
+Data: adult
+(size of subset, gamma, xi, length of a fingerprint): (8, 10, 1, 64)
+Correct: 17/20
+Wrong: 3/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-06-03 11:29:30
+seed: 332
+Data: adult
+(size of subset, gamma, xi, length of a fingerprint): (7, 10, 1, 64)
+Correct: 20/20
+Wrong: 0/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+SUMMARY
+2024-06-03 11:29:30
+(gamma, xi, length of a fingerprint): (10, 1, 64)
+Correct: [10, 13, 17, 16, 16, 14, 17, 20, 20, 20, 20, 20, 20, 20]
+	/20
+
+--------------------------------------------------------------
+

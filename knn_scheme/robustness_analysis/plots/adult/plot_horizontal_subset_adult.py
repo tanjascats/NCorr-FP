@@ -1,13 +1,18 @@
 from matplotlib import pyplot as plt
+from matplotlib import cm
 import numpy as np
 import seaborn as sns
+
 
 #plt.rcParams['axes.grid'] = True
 #plt.rcParams["legend.loc"] = 'upper right'
 # plt.style.use('seaborn-colorblind')
 sns.set_style("whitegrid")
+cmap = cm.get_cmap('plasma') # autumn
+colors = [cmap(i*(1/5)) for i in range(4)]
 
-fig, ax = plt.subplots(2, 2, sharex='col', sharey='row')
+
+#fig, ax = plt.subplots(2, 2, sharex='col', sharey='row')
 
 x = np.array([0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.40, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85,
               0.9, 0.95, 1])
@@ -35,16 +40,17 @@ y[3] = n_exp - np.array([0, 0, 0, 0, 0, 0, 0, 1, 2, 5, 6, 9, 12, 16, 18, 18, 17,
 # gamma = 7 - not 100% successful anymore
 
 # todo test how they look all in one plot
-ax[0, 0].plot(x, y[0])
+# ax[0, 0].plot(x, y[0])
 #ax[0, 0].plot(x, y[1])
 # todo end of test
 
-fig.text(0.5, 0.02, 'Size of the subset(%)', ha='center')
-fig.text(0.04, 0.5, 'Detected fingerprints(%)', va='center', rotation='vertical')
+#fig.text(0.5, 0.02, 'Size of the subset(%)', ha='center')
+#fig.text(0.04, 0.5, 'Detected fingerprints(%)', va='center', rotation='vertical')
 
 #plt.show()
 
 fig2, ax2 = plt.subplots(1, 1, sharex='col', sharey='row')
+ax2.set_prop_cycle(color=colors)
 ax2.plot(x, y[0]/n_exp, label='$\gamma$ = 5')#, c='0.15')
 ax2.plot(x, y[1]/n_exp, label='$\gamma$ = 10')#, c='0.35')
 ax2.plot(x, y[2]/n_exp, label='$\gamma$ = 20')#, c='0.65')

@@ -348,13 +348,14 @@ class BlindNNScheme():
                 dist.remove(dist[0])
                 # print("Max distance: " + str(max(dist)))
                 # resolve the non-determinism take all the tuples with max distance
-                neighbours, dist = bt.query_radius(
-                    [relation_fp.dataframe[other_attributes].loc[r[1][0]]], r=max(dist), return_distance=True,
-                    sort_results=True)
-                neighbours = neighbours[0].tolist()
-                neighbours.remove(neighbours[0])
-                dist = dist[0].tolist()
-                dist.remove(dist[0])
+                # todo: next 7 rows deleted temporarily because it causes a weird error
+#                neighbours, dist = bt.query_radius(
+#                    [relation_fp.dataframe[other_attributes].loc[r[1][0]]], r=max(dist), return_distance=True,
+#                    sort_results=True)
+#                neighbours = neighbours[0].tolist()
+#                neighbours.remove(neighbours[0])
+#                dist = dist[0].tolist()
+#                dist.remove(dist[0])
 
                 # check the frequencies of the values
                 possible_values = []

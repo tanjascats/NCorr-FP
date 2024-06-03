@@ -1,0 +1,176 @@
+2024-05-29 19:49:23
+seed: 332
+Data: german_credit
+(fraction flipped, gamma, xi, length of a fingerprint): (0.05, 2, 1, 16)
+Correct: 0/1
+Wrong: 1/1
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0]
+	/12024-05-29 19:49:24
+seed: 332
+Data: german_credit
+(fraction flipped, gamma, xi, length of a fingerprint): (0.1, 2, 1, 16)
+Correct: 0/1
+Wrong: 1/1
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0, 0]
+	/12024-05-29 19:49:25
+seed: 332
+Data: german_credit
+(fraction flipped, gamma, xi, length of a fingerprint): (0.15, 2, 1, 16)
+Correct: 0/1
+Wrong: 1/1
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0, 0, 0]
+	/12024-05-29 19:49:26
+seed: 332
+Data: german_credit
+(fraction flipped, gamma, xi, length of a fingerprint): (0.2, 2, 1, 16)
+Correct: 0/1
+Wrong: 1/1
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0, 0, 0, 0]
+	/12024-05-29 19:49:27
+seed: 332
+Data: german_credit
+(fraction flipped, gamma, xi, length of a fingerprint): (0.25, 2, 1, 16)
+Correct: 0/1
+Wrong: 1/1
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0, 0, 0, 0, 0]
+	/12024-05-29 19:49:28
+seed: 332
+Data: german_credit
+(fraction flipped, gamma, xi, length of a fingerprint): (0.3, 2, 1, 16)
+Correct: 0/1
+Wrong: 1/1
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0, 0, 0, 0, 0, 0]
+	/12024-05-29 19:49:30
+seed: 332
+Data: german_credit
+(fraction flipped, gamma, xi, length of a fingerprint): (0.35, 2, 1, 16)
+Correct: 0/1
+Wrong: 1/1
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0, 0, 0, 0, 0, 0, 0]
+	/12024-05-29 19:49:31
+seed: 332
+Data: german_credit
+(fraction flipped, gamma, xi, length of a fingerprint): (0.4, 2, 1, 16)
+Correct: 0/1
+Wrong: 1/1
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0, 0, 0, 0, 0, 0, 0, 0]
+	/12024-05-29 19:49:33
+seed: 332
+Data: german_credit
+(fraction flipped, gamma, xi, length of a fingerprint): (0.45, 2, 1, 16)
+Correct: 0/1
+Wrong: 1/1
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0, 0, 0, 0, 0, 0, 0, 0, 0]
+	/12024-05-29 19:49:34
+seed: 332
+Data: german_credit
+(fraction flipped, gamma, xi, length of a fingerprint): (0.5, 2, 1, 16)
+Correct: 0/1
+Wrong: 1/1
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+	/12024-05-29 19:49:36
+seed: 332
+Data: german_credit
+(fraction flipped, gamma, xi, length of a fingerprint): (0.55, 2, 1, 16)
+Correct: 0/1
+Wrong: 1/1
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+	/12024-05-29 19:49:38
+seed: 332
+Data: german_credit
+(fraction flipped, gamma, xi, length of a fingerprint): (0.6, 2, 1, 16)
+Correct: 0/1
+Wrong: 1/1
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+	/1SUMMARY
+2024-05-29 19:49:38
+(gamma, xi, length of a fingerprint): (2, 1, 16)
+Correct: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+	/1
+
+--------------------------------------------------------------
+

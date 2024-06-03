@@ -1,0 +1,38 @@
+2024-05-29 19:15:59
+seed: 332
+Data: adult
+(size of subset, gamma, xi, length of a fingerprint): (14, 5, 1, 64)
+Correct: 17/20
+Wrong: 3/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-05-29 19:26:22
+seed: 332
+Data: adult
+(size of subset, gamma, xi, length of a fingerprint): (13, 5, 1, 64)
+Correct: 17/20
+Wrong: 3/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+2024-05-29 19:35:56
+seed: 332
+Data: adult
+(size of subset, gamma, xi, length of a fingerprint): (12, 5, 1, 64)
+Correct: 20/20
+Wrong: 0/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+SUMMARY
+2024-05-29 19:35:56
+(gamma, xi, length of a fingerprint): (5, 1, 64)
+Correct: [17, 17, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20]
+	/20
+
+--------------------------------------------------------------
+

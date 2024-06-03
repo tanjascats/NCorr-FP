@@ -1,0 +1,17 @@
+{
+  "data": "adult",
+  "n_experiments": 5,
+  "n_fp_experiments": 4,
+  "gamma": 40,
+  "xi": 1,
+  "fingerprint_bit_length": 64,
+  "correlated_attributes": ["relationship", "marital-status", "occupation", "workclass",
+                                                      "education-num"],
+  "original_columns": ["age","workclass","fnlwgt","education","education-num",
+                                                 "marital-status","occupation",
+                                                 "relationship","race","sex","capital-gain","capital-loss",
+                                                 "hours-per-week","native-country","income"],
+  "size_of_subset": [14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
+  "seed": 332
+
+}

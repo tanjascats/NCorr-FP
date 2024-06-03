@@ -1,6 +1,7 @@
+import attacks.bit_flipping_attack
 from knn_scheme.scheme import CategoricalNeighbourhood
 from knn_scheme.experimental.blind_scheme import BlindNNScheme
-
+from attacks import *
 
 def test_knn():
 #    scheme = CategoricalNeighbourhood(gamma=1)
@@ -48,13 +49,14 @@ def test_vertical_attack_bc():
 
 
 def test_vertical_adult():
-    scheme = BlindNNScheme(gamma=10, fingerprint_bit_length=32)
+    scheme = BlindNNScheme(gamma=20, fingerprint_bit_length=32)
 
     fingerprinted_data = scheme.insertion('adult', primary_key='Id', secret_key=100, recipient_id=4,
                                           outfile='knn_scheme/outfiles/adult_fp_acc_wc_en_100.csv',
                                           correlated_attributes=['relationship', 'marital-status', 'occupation',
                                                                  'workclass', 'education-num'])
-    fingerprinted_data = fingerprinted_data.drop(['income'], axis=1)
+    fingerprinted_data = fingerprinted_data[["Id", "age", "workclass","fnlwgt","education","education-num",
+                                                 "marital-status","occupation"]]
     suspect = scheme.detection(fingerprinted_data, secret_key=100, primary_key='Id',
                                correlated_attributes=['relationship', 'marital-status', 'occupation', 'workclass',
                                                       'education-num'],
@@ -64,5 +66,32 @@ def test_vertical_adult():
                                                  "hours-per-week","native-country","income"])
 
 
+def test_flipping_bc():
+    scheme = BlindNNScheme(gamma=1, fingerprint_bit_length=16)
+
+    fingerprinted_data = scheme.insertion('breast-cancer', primary_key='Id', secret_key=100, recipient_id=4,
+                                          outfile='knn_scheme/outfiles/adult_fp_acc_wc_en_100.csv',
+                                          correlated_attributes=['age', 'menopause', 'inv-nodes', 'node-caps'])
+    attack = attacks.bit_flipping_attack.BitFlippingAttack()
+    attacked_data = attack.run(fingerprinted_data, 0.01)
+    print(attacked_data.size)
+    scheme.detection(attacked_data, secret_key=100, primary_key='Id',
+                     correlated_attributes=['age', 'menopause', 'inv-nodes', 'node-caps'])
+
+
+def test_flipping_adult():
+    scheme = BlindNNScheme(gamma=1, fingerprint_bit_length=16)
+
+    fingerprinted_data = scheme.insertion('adult', primary_key='Id', secret_key=100, recipient_id=4,
+                                          outfile='knn_scheme/outfiles/adult_fp_acc_wc_en_100.csv',
+                                          correlated_attributes=['relationship', 'marital-status', 'occupation',
+                                                                 'workclass', 'education-num'])
+    attack = attacks.bit_flipping_attack.BitFlippingAttack()
+    attacked_data = attack.run(fingerprinted_data, 0.01)
+    scheme.detection(fingerprinted_data, secret_key=100, primary_key='Id',
+                     correlated_attributes=['relationship', 'marital-status', 'occupation', 'workclass',
+                                            'education-num'])
+
+
 if __name__ == '__main__':
-    test_vertical_attack_bc()
+    test_flipping_adult()

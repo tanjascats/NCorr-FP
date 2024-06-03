@@ -1,0 +1,120 @@
+2024-06-03 16:53:54
+seed: 332
+Data: breast-cancer
+(fraction flipped, gamma, xi, length of a fingerprint): (0.02, 1, 1, 8)
+Correct: 20/20
+Wrong: 0/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (1, 1, 8)
+Correct: [20]
+	/202024-06-03 16:54:04
+seed: 332
+Data: breast-cancer
+(fraction flipped, gamma, xi, length of a fingerprint): (0.06, 1, 1, 8)
+Correct: 19/20
+Wrong: 1/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (1, 1, 8)
+Correct: [20, 19]
+	/202024-06-03 16:54:14
+seed: 332
+Data: breast-cancer
+(fraction flipped, gamma, xi, length of a fingerprint): (0.1, 1, 1, 8)
+Correct: 16/20
+Wrong: 4/20
+	- out of which misdiagnosed: 1
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (1, 1, 8)
+Correct: [20, 19, 16]
+	/202024-06-03 16:54:25
+seed: 332
+Data: breast-cancer
+(fraction flipped, gamma, xi, length of a fingerprint): (0.14, 1, 1, 8)
+Correct: 15/20
+Wrong: 5/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (1, 1, 8)
+Correct: [20, 19, 16, 15]
+	/202024-06-03 16:54:37
+seed: 332
+Data: breast-cancer
+(fraction flipped, gamma, xi, length of a fingerprint): (0.18, 1, 1, 8)
+Correct: 12/20
+Wrong: 8/20
+	- out of which misdiagnosed: 1
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (1, 1, 8)
+Correct: [20, 19, 16, 15, 12]
+	/202024-06-03 16:54:50
+seed: 332
+Data: breast-cancer
+(fraction flipped, gamma, xi, length of a fingerprint): (0.22, 1, 1, 8)
+Correct: 8/20
+Wrong: 12/20
+	- out of which misdiagnosed: 2
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (1, 1, 8)
+Correct: [20, 19, 16, 15, 12, 8]
+	/202024-06-03 16:55:04
+seed: 332
+Data: breast-cancer
+(fraction flipped, gamma, xi, length of a fingerprint): (0.26, 1, 1, 8)
+Correct: 9/20
+Wrong: 11/20
+	- out of which misdiagnosed: 3
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (1, 1, 8)
+Correct: [20, 19, 16, 15, 12, 8, 9]
+	/202024-06-03 16:55:19
+seed: 332
+Data: breast-cancer
+(fraction flipped, gamma, xi, length of a fingerprint): (0.3, 1, 1, 8)
+Correct: 7/20
+Wrong: 13/20
+	- out of which misdiagnosed: 3
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (1, 1, 8)
+Correct: [20, 19, 16, 15, 12, 8, 9, 7]
+	/20SUMMARY
+2024-06-03 16:55:19
+(gamma, xi, length of a fingerprint): (1, 1, 8)
+Correct: [20, 19, 16, 15, 12, 8, 9, 7]
+	/20
+
+--------------------------------------------------------------
+
