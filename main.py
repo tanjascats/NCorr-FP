@@ -1,6 +1,6 @@
 import attacks.bit_flipping_attack
-from knn_scheme.scheme import CategoricalNeighbourhood
-from knn_scheme.experimental.blind_scheme import BlindNNScheme
+from nn_scheme.scheme import CategoricalNeighbourhood
+from nn_scheme.experimental.blind_scheme import BlindNNScheme
 from attacks import *
 
 def test_knn():

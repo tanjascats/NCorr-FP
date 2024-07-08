@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 from attacks.horizontal_subset_attack import HorizontalSubsetAttack
-from knn_scheme.experimental.blind_scheme import BlindNNScheme
+from nn_scheme.experimental.blind_scheme import BlindNNScheme
 
 # results in results/horizontal
 

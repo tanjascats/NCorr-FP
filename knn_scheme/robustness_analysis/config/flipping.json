@@ -2,10 +2,10 @@
   "data": "adult",
   "n_experiments": 5,
   "n_fp_experiments": 4,
-  "gamma": 5,
+  "gamma": 40,
   "xi": 1,
   "fingerprint_bit_length": 64,
   "correlated_attributes": ["relationship", "marital-status", "occupation", "workclass",
                                                       "education-num"],
-  "size_of_subset": [0.02, 0.06, 0.1 , 0.14, 0.18, 0.22, 0.26, 0.3]
+  "size_of_subset": [0.3,0.26, 0.22, 0.18, 0.14, 0.1, 0.06, 0.02]
 }

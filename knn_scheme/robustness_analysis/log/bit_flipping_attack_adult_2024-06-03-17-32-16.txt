@@ -12,4 +12,18 @@ intermediate summary
 
 (gamma, xi, length of a fingerprint): (5, 1, 64)
 Correct: [20]
+	/202024-06-03 19:18:16
+seed: 332
+Data: adult
+(fraction flipped, gamma, xi, length of a fingerprint): (0.06, 5, 1, 64)
+Correct: 20/20
+Wrong: 0/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (5, 1, 64)
+Correct: [20, 20]
 	/20

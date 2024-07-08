@@ -151,6 +151,27 @@ class Dataset(ABC):
     def get_types(self):
         return self.dataframe.dtypes
 
+    def dropna(self):
+        '''
+        Dropping samples (rows) with missing values. Returns the Dataset object.
+        '''
+        self.dataframe = self.dataframe.dropna()
+        return self
+
+    def drop(self, labels, axis=1):
+        '''
+        Equivalent of pandas drop
+        '''
+        if axis == 1:
+            self.dataframe = self.dataframe.drop(labels, axis=1)
+            self.columns = self.dataframe.columns
+            self.number_of_rows, self.number_of_columns = self.dataframe.shape
+            self._set_types()
+        elif axis == 0:
+            self.dataframe = self.dataframe.drop(labels, axis=0)
+            self.number_of_rows, self.number_of_columns = self.dataframe.shape
+        return self
+
 
 class GermanCredit(Dataset):
     def __init__(self):

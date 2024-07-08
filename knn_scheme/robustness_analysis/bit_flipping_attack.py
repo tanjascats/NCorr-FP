@@ -7,8 +7,8 @@ import numpy as np
 import json
 
 from attacks.bit_flipping_attack import BitFlippingAttack
-from knn_scheme.scheme import CategoricalNeighbourhood
-from knn_scheme.experimental.blind_scheme import BlindNNScheme
+from nn_scheme.scheme import CategoricalNeighbourhood
+from nn_scheme.experimental.blind_scheme import BlindNNScheme
 
 
 def run():
@@ -75,13 +75,13 @@ def run():
                 "\nCorrect: " + str(results) + "\n\t/" + str(str(config['n_experiments'] * config['n_fp_experiments'])))
             f.close()
 
-            if correct == 0:  # for expected bad robustness (FRACTIONS NEED TO BE IN ASCENDING ORDER (config file))
-            # if correct == int(config['n_fp_experiments'] * config['n_experiments']):  # for expected good robustness (FRACTIONS NEED TO BE IN DESCENDING ORDER (config file))
+            # if correct == 0:  # for expected bad robustness (FRACTIONS NEED TO BE IN ASCENDING ORDER (config file))
+            if correct == int(config['n_fp_experiments'] * config['n_experiments']):  # for expected good robustness (FRACTIONS NEED TO BE IN DESCENDING ORDER (config file))
                 done = True
         else:
             # skipping unnecessary calculations since the false miss has already reached the max/min
-            results.append(0)  # for expected bad robustness
-            # results.append(int(config['n_fp_experiments']*config['n_experiments']))  # for expected good robustness
+            # results.append(0)  # for expected bad robustness
+            results.append(int(config['n_fp_experiments']*config['n_experiments']))  # for expected good robustness
 
     f = open("log"
              "/bit_flipping_attack_{}_{}.txt".format(config['data'], timestamp), "a+")

@@ -9,7 +9,7 @@ from datetime import datetime
 import numpy as np
 
 from attacks.combined_attack import CombinedAttack
-from knn_scheme.scheme import CategoricalNeighbourhood
+from nn_scheme.scheme import CategoricalNeighbourhood
 import itertools
 
 n_experiments = 1 #6 #10  # number of times we attack the same fingerprinted file

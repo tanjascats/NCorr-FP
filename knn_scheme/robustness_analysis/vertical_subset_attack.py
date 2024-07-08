@@ -11,8 +11,8 @@ import sys
 #sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 import attacks.vertical_subset_attack
-from knn_scheme.scheme import CategoricalNeighbourhood
-from knn_scheme.experimental.blind_scheme import BlindNNScheme
+from nn_scheme.scheme import CategoricalNeighbourhood
+from nn_scheme.experimental.blind_scheme import BlindNNScheme
 
 
 def run():

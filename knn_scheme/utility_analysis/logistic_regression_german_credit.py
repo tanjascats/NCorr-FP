@@ -10,7 +10,7 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 
 from utils import *
-from knn_scheme.scheme import CategoricalNeighbourhood
+from nn_scheme.scheme import CategoricalNeighbourhood
 
 warnings.filterwarnings("ignore")
 
