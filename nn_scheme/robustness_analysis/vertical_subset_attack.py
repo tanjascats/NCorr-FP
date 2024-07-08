@@ -16,7 +16,7 @@ from nn_scheme.experimental.blind_scheme import BlindNNScheme
 
 
 def run():
-    #path = "knn_scheme/robustness_analysis/"  # for runs from terminal -- add to config file
+    #path = "nn_scheme/robustness_analysis/"  # for runs from terminal -- add to config file
     config_file = "config/vertical.json"
     with open(config_file) as infile:
         config = json.load(infile)

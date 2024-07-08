@@ -404,3 +404,178 @@ class BlindNNScheme():
             print("None suspected.")
         print("Runtime: " + str(int(time.time() - start)) + " sec.")
         return buyer_no
+
+    def demo_insertion(self, dataset_name, recipient_id, secret_key, primary_key=None, outfile=None, correlated_attributes=None):
+        # todo: version still in testing phase
+        # all the same with exception:
+        # choose the value in the same way
+        # if the fp bit is 1 then change it to the most common in the neighbourhood
+        # otherwise change it to the second most common (include self or not - donnow - it would for sure bring less
+        # # # alterations - probably a good idea actually)
+        print("Start the demo blind insertion algorithm of a scheme for fingerprinting categorical data (neighbourhood) ...")
+        print("\tgamma: " + str(self.gamma) + "\n\txi: " + str(self.xi))
+        if secret_key is not None:
+            self.secret_key = secret_key
+        # it is assumed that the first column in the dataset is the primary key
+        relation, primary_key = import_dataset_from_file(dataset_name, primary_key)
+        # number of numerical attributes minus primary key
+        number_of_num_attributes = len(relation.select_dtypes(exclude='object').columns) - 1
+        # number of non-numerical attributes
+        number_of_cat_attributes = len(relation.select_dtypes(include='object').columns)
+        # total number of attributes
+        tot_attributes = number_of_num_attributes + number_of_cat_attributes
+
+        fingerprint = self.create_fingerprint(recipient_id, secret_key)
+        print("\nGenerated fingerprint for buyer " + str(recipient_id) + ": " + fingerprint.bin)
+        print("Inserting the fingerprint...\n")
+
+        start = time.time()
+
+        # label encoder
+        categorical_attributes = relation.select_dtypes(include='object').columns
+        label_encoders = dict()
+        for cat in categorical_attributes:
+            label_enc = LabelEncoder()
+            relation[cat] = label_enc.fit_transform(relation[cat])
+            label_encoders[cat] = label_enc
+
+        # ball trees from user-specified correlated attributes
+        # todo: this is different -- we include also the numerical attributes
+        if correlated_attributes is None:
+        #if True:
+            #correlated_attributes = categorical_attributes[:]
+            correlated_attributes = relation.columns[:]  # everything is correlated if not otherwise specified
+        else:
+            #correlated_attributes = pd.Index(correlated_attributes)
+            correlated_attributes = pd.Index(correlated_attributes)
+
+        start_training_balltrees = time.time()
+        # ball trees from all-except-one attribute and all attributes
+        balltree = dict()
+        for i in range(len(correlated_attributes)):
+            balltree_i = BallTree(relation[correlated_attributes[:i].append(correlated_attributes[(i + 1):])],
+                                  metric="hamming")
+            balltree[correlated_attributes[i]] = balltree_i
+        balltree_all = BallTree(relation[correlated_attributes], metric="hamming")
+        balltree["all"] = balltree_all
+        print("Training balltrees in: " + str(round(time.time() - start_training_balltrees, 2)) + " sec.")
+
+        fingerprinted_relation = relation.copy()
+        iter_log = []
+        for r in relation.iterrows():
+            # r[0] is an index of a row = primary key
+            # seed = concat(secret_key, primary_key)
+            seed = (self.secret_key << self.__primary_key_len) + r[1][0]  # first column must be primary ke
+            random.seed(seed)
+
+            # selecting the tuple
+            if random.randint(0, _MAXINT) % self.gamma == 0:
+                iteration = {'id': 0,
+                             'row_index': r[1][0]}
+                # selecting the attribute
+                attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1 # +1 to skip the prim key
+                attr_name = r[1].index[attr_idx]
+                attribute_val = r[1][attr_idx]
+                iteration['attribute'] = attr_name
+
+                # select fingerprint bit
+                fingerprint_idx = random.randint(0, _MAXINT) % self.fingerprint_bit_length
+                fingerprint_bit = fingerprint[fingerprint_idx]
+                # select mask and calculate the mark bit
+                mask_bit = random.randint(0, _MAXINT) % 2
+                mark_bit = (mask_bit + fingerprint_bit) % 2
+                iteration['mark_bit'] = mark_bit
+
+                # todo: this is different -- we include all attributes, not only categorical; "histogram" scheme
+                marked_attribute = attribute_val
+                # fp information: if mark_bit = fp_bit xor mask_bit is 1 then take the most frequent value,
+                # # # otherwise the second most frequent
+
+                # selecting attributes for knn search -> this is user specified
+                if attr_name in correlated_attributes:
+                    other_attributes = correlated_attributes.tolist().copy()
+                    other_attributes.remove(attr_name)
+                    bt = balltree[attr_name]
+                else:
+                    other_attributes = correlated_attributes.tolist().copy()
+                    bt = balltree["all"]
+                if self.distance_based:
+                    neighbours, dist = bt.query_radius([relation[other_attributes].loc[r[0]]], r=self.d,
+                                                       return_distance=True, sort_results=True)
+                else:
+                    # nondeterminism - non chosen tuples with max distance
+                    dist, neighbours = bt.query([relation[other_attributes].loc[r[0]]], k=self.k + 1)
+                # for demo:
+                # print("Neighbors: " + str(neighbours) + " at distance " + str(dist))
+                # excluding the observed tuple - todo: maybe i want to keep the observed one since I am not forcing the change
+                neighbours = neighbours[0].tolist()
+                # neighbours.remove(neighbours[0])
+                dist = dist[0].tolist()
+                dist.remove(dist[0])
+                # print("Max distance: " + str(max(dist)))
+                # resolve the non-determinism take all the tuples with max distance
+                neighbours, dist = bt.query_radius(
+                    [relation[other_attributes].loc[r[0]]], r=max(dist), return_distance=True,
+                    sort_results=True)
+                neighbours = neighbours[0].tolist()
+                neighbours.remove(neighbours[0])
+                dist = dist[0].tolist()
+                dist.remove(dist[0])
+                iteration['neighbors'] = neighbours
+                iteration['dist'] = dist
+
+                # todo: show this graphically - this is a point for a discussion
+                # print("Size of a neighbourhood: " + str(len(neighbours)) + " instead of " + str(self.k))
+                # print("\tNeighbours: " + str(neighbours))
+
+                # check the frequencies of the values
+                possible_values = []
+                for neighb in neighbours:
+                    # force the change of a value if possible
+                    # todo: this is different! no need to force the change
+                    possible_values.append(relation.at[neighb, r[1].keys()[attr_idx]])
+                frequencies = dict()
+                if len(possible_values) != 0:
+                    for value in set(possible_values):
+                        f = possible_values.count(value) / len(possible_values)
+                        frequencies[value] = f
+                    # choose a value randomly, weighted by a frequency
+                    # todo: this is different - choose a value based on the fingerprint bit value
+                    # sort the values by their frequency
+                    frequencies = {k: v for k, v in sorted(frequencies.items(), key=lambda item: item[1], reverse=True)}
+                    if mark_bit == 0 and len(frequencies.keys()) > 1:
+                        marked_attribute = list(frequencies.keys())[1]
+                    else:
+                        marked_attribute = list(frequencies.keys())[0]
+
+                if attr_name in categorical_attributes:
+                    iteration['frequencies'] = dict()
+                    for (k, val) in frequencies.items():
+                        decoded_k = label_encoders[attr_name].inverse_transform([k])
+                        iteration['frequencies'][decoded_k[0]] = val
+                else:
+                    iteration['frequencies'] = frequencies
+
+
+                iteration['new_value'] = marked_attribute
+                # print("Index " + str(r[0]) + ", attribute " + str(r[1].keys()[attr_idx]) + ", from " +
+                #      str(attribute_val) + " to " + str(marked_attribute))
+                fingerprinted_relation.at[r[0], r[1].keys()[attr_idx]] = marked_attribute
+                iter_log.append(iteration)
+                #   STOPPING DEMO
+                #if iteration['id'] == 1:
+                #    exit()
+
+        # delabeling
+        for cat in categorical_attributes:
+            fingerprinted_relation[cat] = label_encoders[cat].inverse_transform(fingerprinted_relation[cat])
+
+        print("Fingerprint inserted.")
+        if secret_key is None:
+            write_dataset(fingerprinted_relation, "categorical_neighbourhood", "blind/" + dataset_name,
+                          [self.gamma, self.xi],
+                          recipient_id)
+        print("Time: " + str(int(time.time() - start)) + " sec.")
+        if outfile is not None:
+            fingerprinted_relation.to_csv(outfile, index=False)
+        return fingerprinted_relation, iter_log
