@@ -5,6 +5,9 @@ from sklearn.neighbors import BallTree
 from bitstring import BitArray
 import hashlib
 import bitstring
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+
 
 from utils import *
 from utils import _read_data
@@ -94,7 +97,7 @@ class BlindNNScheme():
         # otherwise change it to the second most common (include self or not - donnow - it would for sure bring less
         # # # alterations - probably a good idea actually)
         print("Start the blind insertion algorithm of a scheme for fingerprinting categorical data (neighbourhood) ...")
-        print("\tgamma: " + str(self.gamma) + "\n\txi: " + str(self.xi))
+        print("\tgamma: " + str(self.gamma) + "\n\tcorrelated attributes: " + str(correlated_attributes))
         if secret_key is not None:
             self.secret_key = secret_key
         # it is assumed that the first column in the dataset is the primary key
@@ -232,14 +235,18 @@ class BlindNNScheme():
             write_dataset(fingerprinted_relation, "categorical_neighbourhood", "blind/" + dataset_name,
                           [self.gamma, self.xi],
                           recipient_id)
-        print("Time: " + str(int(time.time() - start)) + " sec.")
+        runtime = time.time() - start
+        if runtime < 1:
+            print("Runtime: " + str(int(runtime) * 1000) + " ms.")
+        else:
+            print("Runtime: " + str(round(runtime, 2)) + " sec.")
         if outfile is not None:
             fingerprinted_relation.to_csv(outfile, index=False)
         return fingerprinted_relation
 
     def detection(self, dataset, secret_key, primary_key=None, correlated_attributes=None, original_columns=None):
         print("Start blind detection algorithm of fingerprinting scheme for categorical data (neighbourhood)...")
-        print("\tgamma: " + str(self.gamma) + "\n\txi: " + str(self.xi))
+        print("\tgamma: " + str(self.gamma) + "\n\tcorrelated attributes: " + str(correlated_attributes))
 
         # todo: this is the key difference: no original dataset needed
 
@@ -402,18 +409,21 @@ class BlindNNScheme():
             print("Buyer " + str(buyer_no) + " is a traitor.")
         else:
             print("None suspected.")
-        print("Runtime: " + str(int(time.time() - start)) + " sec.")
+        runtime = time.time() - start
+        if runtime < 1:
+            print("Runtime: " + str(int(runtime)*1000) + " ms.")
+        else:
+            print("Runtime: " + str(round(runtime, 2)) + " sec.")
         return buyer_no
 
     def demo_insertion(self, dataset_name, recipient_id, secret_key, primary_key=None, outfile=None, correlated_attributes=None):
-        # todo: version still in testing phase
         # all the same with exception:
         # choose the value in the same way
         # if the fp bit is 1 then change it to the most common in the neighbourhood
         # otherwise change it to the second most common (include self or not - donnow - it would for sure bring less
         # # # alterations - probably a good idea actually)
         print("Start the demo blind insertion algorithm of a scheme for fingerprinting categorical data (neighbourhood) ...")
-        print("\tgamma: " + str(self.gamma) + "\n\txi: " + str(self.xi))
+        print("\tgamma: " + str(self.gamma) + "\n\tcorrelated attributes: " + str(correlated_attributes))
         if secret_key is not None:
             self.secret_key = secret_key
         # it is assumed that the first column in the dataset is the primary key
@@ -470,8 +480,7 @@ class BlindNNScheme():
 
             # selecting the tuple
             if random.randint(0, _MAXINT) % self.gamma == 0:
-                iteration = {'id': 0,
-                             'row_index': r[1][0]}
+                iteration = {'row_index': r[1][0]}
                 # selecting the attribute
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1 # +1 to skip the prim key
                 attr_name = r[1].index[attr_idx]
@@ -508,25 +517,20 @@ class BlindNNScheme():
                 # for demo:
                 # print("Neighbors: " + str(neighbours) + " at distance " + str(dist))
                 # excluding the observed tuple - todo: maybe i want to keep the observed one since I am not forcing the change
-                neighbours = neighbours[0].tolist()
+                    # neighbours = neighbours[0].tolist()
                 # neighbours.remove(neighbours[0])
-                dist = dist[0].tolist()
-                dist.remove(dist[0])
-                # print("Max distance: " + str(max(dist)))
-                # resolve the non-determinism take all the tuples with max distance
-                neighbours, dist = bt.query_radius(
-                    [relation[other_attributes].loc[r[0]]], r=max(dist), return_distance=True,
-                    sort_results=True)
-                neighbours = neighbours[0].tolist()
-                neighbours.remove(neighbours[0])
+                    dist = dist[0].tolist()
+                    dist.remove(dist[0])
+                    # resolve the non-determinism take all the tuples with max distance
+                    neighbours, dist = bt.query_radius(
+                        [relation[other_attributes].loc[r[0]]], r=max(dist), return_distance=True,
+                        sort_results=True)  # the list of neightbors is the first (and only) elemnent of the returned list
+                    neighbours = neighbours[0].tolist()
+                    neighbours.remove(neighbours[0])
                 dist = dist[0].tolist()
                 dist.remove(dist[0])
                 iteration['neighbors'] = neighbours
                 iteration['dist'] = dist
-
-                # todo: show this graphically - this is a point for a discussion
-                # print("Size of a neighbourhood: " + str(len(neighbours)) + " instead of " + str(self.k))
-                # print("\tNeighbours: " + str(neighbours))
 
                 # check the frequencies of the values
                 possible_values = []
@@ -575,7 +579,213 @@ class BlindNNScheme():
             write_dataset(fingerprinted_relation, "categorical_neighbourhood", "blind/" + dataset_name,
                           [self.gamma, self.xi],
                           recipient_id)
-        print("Time: " + str(int(time.time() - start)) + " sec.")
+        runtime = time.time() - start
+        if runtime < 1:
+            print("Runtime: " + str(int(runtime) * 1000) + " ms.")
+        else:
+            print("Runtime: " + str(round(runtime, 2)) + " sec.")
         if outfile is not None:
             fingerprinted_relation.to_csv(outfile, index=False)
         return fingerprinted_relation, iter_log
+
+    def demo_detection(self, dataset, secret_key, primary_key=None, correlated_attributes=None, original_columns=None):
+        print("Start demo for blind detection algorithm of fingerprinting scheme for categorical data (neighbourhood)...")
+        print("\tgamma: " + str(self.gamma) + "\n\tcorrelated attributes: " + str(correlated_attributes))
+
+        # todo: this is the key difference: no original dataset needed
+
+#        if secret_key is not None:
+#            relation_fp = dataset
+#        else:
+#            relation_fp, primary_key_fp = import_fingerprinted_dataset(scheme_string="categorical_neighbourhood",
+#                                                                       dataset_name="blind/" + dataset_name,
+#                                                                       scheme_params=[self.gamma, self.xi],
+#                                                                       real_recipient_id=real_recipient_id)
+        relation_fp = _read_data(dataset)
+        indices = list(relation_fp.dataframe.index)
+        # number of numerical attributes minus primary key
+        number_of_num_attributes = len(relation_fp.dataframe.select_dtypes(exclude='object').columns) - 1
+        number_of_cat_attributes = len(relation_fp.dataframe.select_dtypes(include='object').columns)
+        tot_attributes = number_of_num_attributes + number_of_cat_attributes
+        categorical_attributes = relation_fp.dataframe.select_dtypes(include='object').columns
+
+        # here we address checking for the missing columns (defense against vertical attack)
+        # if not relation_orig.columns.equals(relation_fp.columns):
+        #    print(relation_fp.columns)
+        #    difference = relation_orig.columns.difference(relation_fp.columns)
+        #    for diff in difference:
+        #        relation_fp[diff] = relation_orig[diff]
+        # bring back the original order of columns
+        # relation_fp = relation_fp[relation_orig.columns.tolist()]
+        attacked_columns = []
+        if original_columns is not None:  # aligning with original schema (in case of vertical attacks)
+            if "Id" in original_columns:
+                original_columns.remove("Id")  # just in case
+            for orig_col in original_columns:
+                if orig_col not in relation_fp.columns:
+                    # fill in
+                    relation_fp.dataframe[orig_col] = 0
+                    attacked_columns.append(orig_col)
+            # rearrange in the original order
+            relation_fp.dataframe = relation_fp.dataframe[["Id"] + original_columns]
+            tot_attributes += len(attacked_columns)
+
+        # encode the categorical values
+        label_encoders = dict()
+        for cat in categorical_attributes:
+            label_enc = LabelEncoder()
+            relation_fp.dataframe[cat] = label_enc.fit_transform(relation_fp.dataframe[cat])
+            label_encoders[cat] = label_enc
+
+        start = time.time()
+
+        start_balling = time.time()
+        # ball trees from all-except-one attribute and all attributes
+        if correlated_attributes is None:
+            correlated_attributes = relation_fp.columns[:]  # everything is correlated if not otherwise specified
+        else:
+            correlated_attributes = pd.Index(correlated_attributes)
+        balltree = dict()
+        for i in range(len(correlated_attributes)):
+            balltree_i = BallTree(relation_fp.dataframe[correlated_attributes[:i].append(correlated_attributes[(i + 1):])],
+                                  metric="hamming")
+            balltree[correlated_attributes[i]] = balltree_i
+        balltree_all = BallTree(relation_fp.dataframe[correlated_attributes], metric="hamming")
+        balltree["all"] = balltree_all
+
+        count = [[0, 0] for x in range(self.fingerprint_bit_length)]
+        iter_log = []
+        for r in relation_fp.dataframe.iterrows():
+            seed = (self.secret_key << self.__primary_key_len) + r[1][0]  # primary key must be the first column
+            random.seed(seed)
+            # this tuple was marked
+            if random.randint(0, _MAXINT) % self.gamma == 0:
+                iteration = {'row_index': r[1][0]}
+                # this attribute was marked (skip the primary key)
+                attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # add 1 to skip the primary key
+                attr_name = r[1].index[attr_idx]
+                if attr_name in attacked_columns:  # if this columns was deleted by VA, don't collect the votes
+                    continue  # todo: testing efficacy against vertical attack -- maybe, if this attribute was deleted, don't collect the votes!
+                iteration['attribute'] = attr_name
+                attribute_val = r[1][attr_idx]
+                # fingerprint bit
+                fingerprint_idx = random.randint(0, _MAXINT) % self.fingerprint_bit_length
+                iteration['fingerprint_idx'] = fingerprint_idx
+                # mask
+                mask_bit = random.randint(0, _MAXINT) % 2
+
+                # todo: this is different
+                # find the neighbourhood
+                # sort values by frequencies
+                # if the value is the most frequent by those, then the fingerprint bit value was 1, otherwise 0
+                # todo: consider this: if there is only one possible attribute in the neighbourhood then the value
+                # # # could have been both 0 and 1 equally likely. therefore, give votes to both.
+                # selecting attributes for knn search -> this is user specified
+                # todo: here we can exclude imputed columns to overcome errors in vertical attack
+                if attr_name in correlated_attributes:
+                    other_attributes = correlated_attributes.tolist().copy()
+                    other_attributes.remove(attr_name)
+                    bt = balltree[attr_name]
+                else:
+                    other_attributes = correlated_attributes.tolist().copy()
+                    bt = balltree["all"]
+                if self.distance_based:
+                    neighbours, dist = bt.query_radius([relation_fp[other_attributes].loc[r[1][0]]], r=self.d,
+                                                       return_distance=True, sort_results=True)
+                else:
+                    # nondeterminism - non chosen tuples with max distance
+                    dist, neighbours = bt.query([relation_fp.dataframe[other_attributes].loc[r[1][0]]], k=self.k + 1)
+                # excluding the observed tuple - todo: dont exclude
+                # neighbours.remove(neighbours[0])
+                    dist = dist[0].tolist()
+                    dist.remove(dist[0])
+                    # resolve the non-determinism take all the tuples with max distance
+                    neighbours, dist = bt.query_radius(
+                        [relation_fp.dataframe[other_attributes].loc[r[0]]], r=max(dist), return_distance=True,
+                        sort_results=True)  # the list of neightbors is the first (and only) elemnent of the returned list
+                    neighbours = neighbours[0].tolist()
+                    neighbours.remove(neighbours[0])
+                dist = dist[0].tolist()
+                dist.remove(dist[0])
+                iteration['neighbors'] = neighbours
+                iteration['dist'] = dist
+                # print("Max distance: " + str(max(dist)))
+                # resolve the non-determinism take all the tuples with max distance
+                # todo: next 7 rows deleted temporarily because it causes a weird error
+#                neighbours, dist = bt.query_radius(
+#                    [relation_fp.dataframe[other_attributes].loc[r[1][0]]], r=max(dist), return_distance=True,
+#                    sort_results=True)
+#                neighbours = neighbours[0].tolist()
+#                neighbours.remove(neighbours[0])
+#                dist = dist[0].tolist()
+#                dist.remove(dist[0])
+
+                # check the frequencies of the values
+                possible_values = []
+                for neighb in neighbours:
+                    neighb = indices[neighb]  # balltree resets the index so querying by index only fails for horizontal attacks, so we have to keep track of indices like this
+                    possible_values.append(relation_fp.dataframe.at[neighb, r[1].keys()[attr_idx]])
+                frequencies = dict()
+                if len(possible_values) != 0:
+                    for value in set(possible_values):
+                        f = possible_values.count(value) / len(possible_values)
+                        frequencies[value] = f
+                    # sort the values by their frequency
+                    frequencies = {k: v for k, v in
+                                   sorted(frequencies.items(), key=lambda item: item[1], reverse=True)}
+                if attribute_val == list(frequencies.keys())[0]:
+                    mark_bit = 1
+                else:
+                    mark_bit = 0
+
+                if attr_name in categorical_attributes:
+                    iteration['frequencies'] = dict()
+                    for (k, val) in frequencies.items():
+                        decoded_k = label_encoders[attr_name].inverse_transform([k])
+                        iteration['frequencies'][decoded_k[0]] = val
+                else:
+                    iteration['frequencies'] = frequencies
+                iteration['mark_bit'] = mark_bit
+                # original_value = relation_orig.loc[r[0], attr_name]
+                # mark_bit = 0
+                # if attribute_val != original_value:
+                #    mark_bit = 1
+                fingerprint_bit = (mark_bit + mask_bit) % 2
+                count[fingerprint_idx][fingerprint_bit] += 1
+#                if r[1][0] in [49, 74, 99, 199, 299, 399, 499, 599, 699]:
+#                    print(count)
+#                print(count)
+                iteration['count_state'] = count  # this returns the final counts for each step ??
+#                print(iteration['count_state'])
+                iteration['mask_bit'] = mask_bit
+                iteration['fingerprint_bit'] = fingerprint_bit
+
+                iter_log.append(iteration)
+
+        # this fingerprint template will be upside-down from the real binary representation
+        fingerprint_template = [2] * self.fingerprint_bit_length
+        # recover fingerprint
+        for i in range(self.fingerprint_bit_length):
+            # certainty of a fingerprint value
+            T = 0.50
+            if count[i][0] + count[i][1] != 0:
+                if count[i][0] / (count[i][0] + count[i][1]) > T:
+                    fingerprint_template[i] = 0
+                elif count[i][1] / (count[i][0] + count[i][1]) > T:
+                    fingerprint_template[i] = 1
+
+        fingerprint_template_str = ''.join(map(str, fingerprint_template))
+        print("Fingerprint detected: " + list_to_string(fingerprint_template))
+        # print(count)
+
+        buyer_no = self.detect_potential_traitor(fingerprint_template_str, secret_key)
+        if buyer_no >= 0:
+            print("Fingerprint belongs to Recipient " + str(buyer_no))
+        else:
+            print("None suspected.")
+        runtime = time.time() - start
+        if runtime < 1:
+            print("Runtime: " + str(int(runtime) * 1000) + " ms.")
+        else:
+            print("Runtime: " + str(round(runtime, 2)) + " sec.")
+        return buyer_no, iter_log

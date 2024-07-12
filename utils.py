@@ -9,10 +9,10 @@ from traceback import format_exc
 from astropy.table import Table
 from joblib import Parallel
 
-from sklearn.utils.validation import _check_fit_params, _num_samples
+#from sklearn.utils.validation import _check_fit_params, _num_samples
 from sklearn.utils.metaestimators import _safe_split
 from sklearn.utils import indexable
-from sklearn.utils.fixes import delayed
+#from sklearn.utils.fixes import delayed
 from sklearn.base import clone, is_classifier
 from sklearn.model_selection._validation import _score, _aggregate_score_dicts, _normalize_score_results, _insert_error_scores
 from sklearn.model_selection._split import check_cv

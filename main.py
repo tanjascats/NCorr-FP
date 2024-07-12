@@ -96,11 +96,19 @@ def test_flipping_adult():
 def test_demo():
     scheme = BlindNNScheme(gamma=1, fingerprint_bit_length=16)
     data = "datasets/breast_cancer_full.csv"
-    fingerprinted_data = scheme.demo_insertion('breast-cancer', primary_key='Id', secret_key=601, recipient_id=4,
+    fingerprinted_data, iter_log = scheme.demo_insertion('breast-cancer', primary_key='Id', secret_key=601, recipient_id=4,
                                           outfile='nn_scheme/outfiles/fp_data_blind_corr_all_attributes.csv',
                                           correlated_attributes=['age', 'menopause', 'inv-nodes', 'node-caps'])
     #
+    suspect, d_iter_log = scheme.demo_detection(fingerprinted_data, secret_key=601, primary_key='Id',
+                               correlated_attributes=['age', 'menopause', 'inv-nodes', 'node-caps'],
+                               original_columns=["age", "menopause", "tumor-size", "inv-nodes", "node-caps",
+                                                 "deg-malig", "breast", "breast-quad",
+                                                 "irradiat", "recurrence"])
+    return d_iter_log
 
 
 if __name__ == '__main__':
-    test_demo()
+    log = test_demo()
+    print(log[49]['fingerprint_idx'])
+    print(log[49]['fingerprint_bit'])
