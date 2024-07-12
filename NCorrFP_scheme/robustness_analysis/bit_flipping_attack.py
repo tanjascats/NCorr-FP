@@ -7,7 +7,7 @@ import numpy as np
 import json
 
 from attacks.bit_flipping_attack import BitFlippingAttack
-from nn_scheme.NCorrFP_scheme import NCorrFP
+from NCorrFP_scheme.NCorrFP_scheme import NCorrFP
 
 
 def run():

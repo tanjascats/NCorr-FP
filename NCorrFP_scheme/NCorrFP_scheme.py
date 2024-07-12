@@ -215,7 +215,7 @@ class NCorrFP():
                           recipient_id)
         runtime = time.time() - start
         if runtime < 1:
-            print("Runtime: " + str(int(runtime) * 1000) + " ms.")
+            print("Runtime: " + str(round(runtime*1000, 2)) + " ms.")
         else:
             print("Runtime: " + str(round(runtime, 2)) + " sec.")
         if outfile is not None:
@@ -349,7 +349,7 @@ class NCorrFP():
 
         buyer_no = self.detect_potential_traitor(fingerprint_template_str, secret_key)
         if buyer_no >= 0:
-            print("Buyer " + str(buyer_no) + " is a traitor.")
+            print("Fingerprint belongs to Recipient " + str(buyer_no))
         else:
             print("None suspected.")
         runtime = time.time() - start
@@ -642,8 +642,8 @@ class NCorrFP():
 
                 fingerprint_bit = (mark_bit + mask_bit) % 2
                 count[fingerprint_idx][fingerprint_bit] += 1
-#                if r[1][0] in [49, 74, 99, 199, 299, 399, 499, 599, 699]:
-#                    print(count)
+                if r[1][0] in [49, 99, 199, 299, 399, 499, 599, 699]:
+                    print(count)
 #                print(count)
                 iteration['count_state'] = count  # this returns the final counts for each step ??
 #                print(iteration['count_state'])

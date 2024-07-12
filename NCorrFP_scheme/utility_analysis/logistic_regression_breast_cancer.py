@@ -1,13 +1,13 @@
 from sklearn.model_selection import RandomizedSearchCV
 from utils import *
-from nn_scheme.NBNN_scheme import CategoricalNeighbourhood
+from NCorrFP_scheme.NBNN_scheme import CategoricalNeighbourhood
 import numpy as np
 from time import time
 from sklearn.model_selection import cross_val_score
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.linear_model import LogisticRegression
 
-gamma = 1
-n_exp = 200
+gamma = 5
+n_exp = 100
 
 start = time()
 
@@ -28,13 +28,13 @@ data = breast_cancer.values
 
 # define the model and possible hyperparameters
 random_state = 25 # increase every run
-n_neighbors_range = range(1, 6)
-algorithm_range = ['auto', 'ball_tree', 'kd_tree', 'brute']
+solver_range = ["liblinear", "newton-cg", "lbfgs", "saga"]
+C_range = range(10, 101, 10)
 
 # hyperparameter random search
 # take the best accuracy from 10-fold cross validation as a benchmark performance
-model = KNeighborsClassifier()
-param_dist = dict(n_neighbors=n_neighbors_range, algorithm=algorithm_range)
+model = LogisticRegression(random_state=random_state)
+param_dist = dict(solver=solver_range, C=C_range)
 rand_search = RandomizedSearchCV(model, param_dist, cv=10, n_iter=15, scoring="accuracy", random_state=random_state)
 rand_search.fit(data, target)
 best_params = rand_search.best_params_
@@ -42,8 +42,8 @@ print(best_params)
 print(rand_search.best_score_)
 print(rand_search.best_estimator_)
 exit()
+secret_key = 3255  # change every run
 results = []
-secret_key = 3255  # increase every run
 for n in range(n_exp):
     # fingerprint the data
     scheme = CategoricalNeighbourhood(gamma=gamma, xi=2, fingerprint_bit_length=8)
@@ -55,7 +55,7 @@ for n in range(n_exp):
     fp_dataset = fp_dataset.values
     # hyperparameter seach
 
-    model2 = KNeighborsClassifier(n_neighbors=best_params['n_neighbors'], algorithm=best_params['algorithm'])
+    model2 = LogisticRegression(random_state=random_state, C=best_params['C'], solver=best_params['solver'])
     scores = cross_val_score(model2, fp_dataset, target, cv=10)
     print(np.mean(scores))
     # note the  best accuracy from the 10-fold
@@ -66,16 +66,16 @@ for n in range(n_exp):
 print(np.mean(results))
 print("Time: " + str(int(time()-start)) + " sec.")
 
-# --------- # 0.7167832167832168 # 0.6678321678321678  # 0.6818181818181818 # 0.7517482517482518
+# --------- # 0.7167832167832168 # 0.6678321678321678  # 0.6783216783216783 # 0.7517482517482518
 # --------------------------------------------------------------------------------------------
 # --------- # decision tree      # logistic regression # gradient boosting  # knn
-# gamma = 1 | 0.6853146853146851 #                     #                    #
+# gamma = 1 | 0.6853146853146851 # 0.6663658456486042  #                   #
 # ----------------------------------------------------------------------------------------------#
-# gamma = 2 | 0.6993006993006995
+# gamma = 2 | 0.6993006993006995 # 0.6670189655172414
 # ----------------------------------------------------------------------------------------------#
 # gamma = 3 | 0.6643356643356643 # 0.6608391608391608  #
 # ----------------------------------------------------------------------------------------------#
-# gamma = 5 | 0.6993006993006995
+# gamma = 5 | 0.6993006993006995 # 0.6643120689655173
 # ------------------------------------------------
 # ------------------------------------------------
 # ------------------------------------------------

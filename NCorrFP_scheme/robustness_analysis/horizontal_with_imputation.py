@@ -7,29 +7,59 @@ sys.path.append("/home/sarcevic/fingerprinting-toolbox/")
 import random
 from datetime import datetime
 import numpy as np
+import pandas as pd
 
-from attacks.combined_attack import CombinedAttack
-from nn_scheme.NBNN_scheme import CategoricalNeighbourhood
-import itertools
+from attacks.horizontal_subset_attack import HorizontalSubsetAttack
+from NCorrFP_scheme.NBNN_scheme import CategoricalNeighbourhood
 
-n_experiments = 1 #6 #10  # number of times we attack the same fingerprinted file
-n_fp_experiments = 1 #15 #25  # number of times we run fp insertion
+from sklearn import preprocessing
 
-size_of_subset = np.array([0.9, 0.95, 1])
-fractions = np.array([0.9, 0.95, 1])
-columns = np.array([1, 2])
-a = [size_of_subset, columns, fractions]
-combinations = list(itertools.product(*a))
+from sdv import SDV
+from sdv import Metadata
+
+
+def synth(data, amount):
+    le = preprocessing.LabelEncoder()
+
+    #synthetic_data = os.path.join(file_path + '/', "SDV_syntraindata.csv")
+    #input_df = pd.read_csv(data, skipinitialspace=True)
+    input_df = data
+    tables = {'ftable': input_df}
+
+    #trainjson = os.path.join(file_path, "meta.json")
+    #instance = os.path.join(file_path, "sdv.pkl")
+
+    metadata = Metadata()
+    metadata.add_table('ftable', data=tables['ftable'])
+    #metadata.to_json(trainjson)
+
+    sdv = SDV()
+    sdv.fit(metadata, tables)
+    #sdv.save(instance)
+
+    #sdv = SDV.load(instance)
+    samples = sdv.sample_all(amount)  # here: number of synthetic samples
+    df = samples['ftable']
+    df = df[input_df.columns]
+    #df.to_csv(synthetic_data, index=False)
+    return df
+
+
+n_experiments = 8  # number of times we attack the same fingerprinted file
+n_fp_experiments = 15  # number of times we run fp insertion
+
+size_of_subset = np.array([0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.40, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75,
+                           0.8, 0.85, 0.9, 0.95, 1])
 results = []
-gamma = 3; xi = 2; fingerprint_bit_length = 8
+gamma = 5; xi = 2; fingerprint_bit_length = 16
 
 scheme = CategoricalNeighbourhood(gamma=gamma, xi=xi, fingerprint_bit_length=fingerprint_bit_length)
-attack = CombinedAttack()
-data = 'german_credit'
+attack = HorizontalSubsetAttack()
+data = 'nursery'
 
-f = open("robustness_analysis/categorical_neighbourhood/log/combined_attack_" + data + ".txt", "a+")
+f = open("robustness_analysis/categorical_neighbourhood/log/horizontal_with_imputation_" + data + ".txt", "a+")
 
-for combo in combinations:
+for size in size_of_subset:
     # for reproducibility
     seed = 332
     random.seed(seed)
@@ -42,11 +72,19 @@ for combo in combinations:
 
         for j in range(n_experiments):
             # perform the attack
-            release_data = attack.run(dataset=fp_dataset, fraction_subset=combo[0], number_of_columns=combo[1],
-                                      fraction_flipping=combo[2])
+            release_data = attack.run(dataset=fp_dataset, fraction=size)
+            # todo: here goes the imputation
+            synthetic_amount = len(fp_dataset) - len(release_data)
+            synthetic_data = synth(fp_dataset, synthetic_amount)
+            # todo: solve the Id-s
+            # get the id-s that are missing release data
+            missing_ids = pd.concat([fp_dataset['Id'], release_data['Id']]).drop_duplicates(keep=False)
+            synthetic_data = synthetic_data.assign(Id=missing_ids.values)
+            imputed_data = release_data.append(synthetic_data)
+            print(len(release_data))
             # try to extract the fingerprint
             suspect = scheme.detection(dataset_name=data, real_buyer_id=1, secret_key=secret_key,
-                                dataset=release_data)
+                                dataset=imputed_data)
             if suspect == 1:
                 correct += 1
             elif suspect != -1:
@@ -54,8 +92,7 @@ for combo in combinations:
 
     print("\n\n--------------------------------------------------------------\n\n")
     print("Data: " + data)
-    print("(size of subset, columns, flipped, gamma, xi, length of a fingerprint): " +
-          str((combo[0], combo[1], combo[2], gamma, xi, fingerprint_bit_length)))
+    print("(size of subset, gamma, xi, length of a fingerprint): " + str((size, gamma, xi, fingerprint_bit_length)))
     print("Correct: " + str(correct) + "/" + str(n_experiments*n_fp_experiments))
     print("Wrong: " + str(n_experiments*n_fp_experiments - correct) + "/" + str(n_experiments*n_fp_experiments)
           + "\n\t- out of which misdiagnosed: " + str(misdiagnosis))
@@ -64,7 +101,7 @@ for combo in combinations:
     f.write(str(datetime.fromtimestamp(int(datetime.timestamp(datetime.now())))))
     f.write("\nseed: " + str(seed))
     f.write("\nData: " + data)
-    f.write("\n(size of subset, columns, flipped, gamma, xi, length of a fingerprint): " + str((combo[0], combo[1], combo[2], gamma, xi,
+    f.write("\n(size of subset, gamma, xi, length of a fingerprint): " + str((size, gamma, xi,
                                                                             fingerprint_bit_length)))
     f.write("\nCorrect: " + str(correct) + "/" + str(n_experiments*n_fp_experiments))
     f.write("\nWrong: " + str(n_experiments*n_fp_experiments - correct) + "/" + str(n_experiments*n_fp_experiments)
@@ -76,7 +113,6 @@ for combo in combinations:
 f.write("SUMMARY\n")
 f.write(str(datetime.fromtimestamp(int(datetime.timestamp(datetime.now())))))
 f.write("\n(gamma, xi, length of a fingerprint): " + str((gamma, xi, fingerprint_bit_length)))
-f.write("\n" + str(combinations))
 f.write("\nCorrect: " + str(results) + "\n\t/" + str(n_experiments * n_fp_experiments))
 f.write("\n\n--------------------------------------------------------------\n\n")
 f.close()

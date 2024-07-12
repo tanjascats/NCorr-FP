@@ -9,11 +9,11 @@ import json
 #sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 import attacks.vertical_subset_attack
-from nn_scheme.NCorrFP_scheme import NCorrFP
+from NCorrFP_scheme.NCorrFP_scheme import NCorrFP
 
 
 def run():
-    #path = "nn_scheme/robustness_analysis/"  # for runs from terminal -- add to config file
+    #path = "NCorrFP_scheme/robustness_analysis/"  # for runs from terminal -- add to config file
     config_file = "config/vertical.json"
     with open(config_file) as infile:
         config = json.load(infile)
