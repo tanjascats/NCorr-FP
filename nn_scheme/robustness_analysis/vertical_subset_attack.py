@@ -5,14 +5,11 @@ import random
 from datetime import datetime
 import numpy as np
 import json
-import os
-import sys
 
 #sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 import attacks.vertical_subset_attack
-from nn_scheme.scheme import CategoricalNeighbourhood
-from nn_scheme.experimental.blind_scheme import BlindNNScheme
+from nn_scheme.NCorrFP_scheme import NCorrFP
 
 
 def run():
@@ -28,9 +25,9 @@ def run():
     results = []
     # gamma = 3; xi = 2; fingerprint_bit_length = 8
 
-    scheme = BlindNNScheme(gamma=config['gamma'],
-                           xi=config['xi'],
-                           fingerprint_bit_length=config['fingerprint_bit_length'])
+    scheme = NCorrFP(gamma=config['gamma'],
+                     xi=config['xi'],
+                     fingerprint_bit_length=config['fingerprint_bit_length'])
     attack = attacks.vertical_subset_attack.VerticalSubsetAttack()
     # data = 'german_credit'
 

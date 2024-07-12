@@ -1,11 +1,10 @@
 import attacks.bit_flipping_attack
-from nn_scheme.scheme import CategoricalNeighbourhood
-from nn_scheme.experimental.blind_scheme import BlindNNScheme
-from attacks import *
+from nn_scheme.NCorrFP_scheme import NCorrFP
+
 
 def test_knn():
 #    scheme = CategoricalNeighbourhood(gamma=1)
-    scheme = BlindNNScheme(gamma=1, fingerprint_bit_length=16)
+    scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
     data = "datasets/breast_cancer_full.csv"
     fingerprinted_data = scheme.insertion('breast-cancer', primary_key='Id', secret_key=601, recipient_id=4,
                                           outfile='nn_scheme/outfiles/fp_data_blind_corr_all_attributes.csv',
@@ -25,7 +24,7 @@ def test_knn():
 
 
 def knn_adult_census():
-    scheme = BlindNNScheme(gamma=10, fingerprint_bit_length=32)
+    scheme = NCorrFP(gamma=10, fingerprint_bit_length=32)
 
     fingerprinted_data = scheme.insertion('adult', primary_key='Id', secret_key=100, recipient_id=4,
                                           outfile='nn_scheme/outfiles/adult_fp_acc_wc_en_100.csv',
@@ -36,7 +35,7 @@ def knn_adult_census():
 
 
 def test_vertical_attack_bc():
-    scheme = BlindNNScheme(gamma=1, fingerprint_bit_length=8)
+    scheme = NCorrFP(gamma=1, fingerprint_bit_length=8)
     fingerprinted_data = scheme.insertion('breast-cancer', primary_key='Id', secret_key=601, recipient_id=4,
                                           outfile='nn_scheme/outfiles/fp_data_blind_corr_all_attributes.csv',
                                           correlated_attributes=['age', 'menopause', 'inv-nodes', 'node-caps'])
@@ -49,7 +48,7 @@ def test_vertical_attack_bc():
 
 
 def test_vertical_adult():
-    scheme = BlindNNScheme(gamma=20, fingerprint_bit_length=32)
+    scheme = NCorrFP(gamma=20, fingerprint_bit_length=32)
 
     fingerprinted_data = scheme.insertion('adult', primary_key='Id', secret_key=100, recipient_id=4,
                                           outfile='nn_scheme/outfiles/adult_fp_acc_wc_en_100.csv',
@@ -67,7 +66,7 @@ def test_vertical_adult():
 
 
 def test_flipping_bc():
-    scheme = BlindNNScheme(gamma=1, fingerprint_bit_length=16)
+    scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
 
     fingerprinted_data = scheme.insertion('breast-cancer', primary_key='Id', secret_key=100, recipient_id=4,
                                           outfile='nn_scheme/outfiles/adult_fp_acc_wc_en_100.csv',
@@ -80,7 +79,7 @@ def test_flipping_bc():
 
 
 def test_flipping_adult():
-    scheme = BlindNNScheme(gamma=1, fingerprint_bit_length=16)
+    scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
 
     fingerprinted_data = scheme.insertion('adult', primary_key='Id', secret_key=100, recipient_id=4,
                                           outfile='nn_scheme/outfiles/adult_fp_acc_wc_en_100.csv',
@@ -94,7 +93,7 @@ def test_flipping_adult():
 
 
 def test_demo():
-    scheme = BlindNNScheme(gamma=1, fingerprint_bit_length=16)
+    scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
     data = "datasets/breast_cancer_full.csv"
     fingerprinted_data, iter_log = scheme.demo_insertion('breast-cancer', primary_key='Id', secret_key=601, recipient_id=4,
                                           outfile='nn_scheme/outfiles/fp_data_blind_corr_all_attributes.csv',
@@ -109,6 +108,4 @@ def test_demo():
 
 
 if __name__ == '__main__':
-    log = test_demo()
-    print(log[49]['fingerprint_idx'])
-    print(log[49]['fingerprint_bit'])
+    test_knn()

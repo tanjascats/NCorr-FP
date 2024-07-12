@@ -3,13 +3,11 @@
 # approach
 import json
 import random
-import sys
 from datetime import datetime
-from matplotlib import pyplot as plt
 import numpy as np
 
 from attacks.horizontal_subset_attack import HorizontalSubsetAttack
-from nn_scheme.experimental.blind_scheme import BlindNNScheme
+from nn_scheme.NCorrFP_scheme import NCorrFP
 
 # results in results/horizontal
 
@@ -28,9 +26,9 @@ def run():
     results = []
     #gamma = 1; xi = 2; fingerprint_bit_length = 16
 
-    scheme = BlindNNScheme(gamma=config['gamma'],
-                           xi=config['xi'],
-                           fingerprint_bit_length=config['fingerprint_bit_length'])
+    scheme = NCorrFP(gamma=config['gamma'],
+                     xi=config['xi'],
+                     fingerprint_bit_length=config['fingerprint_bit_length'])
     attack = HorizontalSubsetAttack()
     #data = "breast_cancer"
 

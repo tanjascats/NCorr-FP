@@ -4,8 +4,6 @@ from sklearn.neighbors import BallTree
 from bitstring import BitArray
 import hashlib
 import bitstring
-import json
-import sys
 
 
 from utils import *

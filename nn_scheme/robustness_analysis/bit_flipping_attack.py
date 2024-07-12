@@ -7,8 +7,7 @@ import numpy as np
 import json
 
 from attacks.bit_flipping_attack import BitFlippingAttack
-from nn_scheme.scheme import CategoricalNeighbourhood
-from nn_scheme.experimental.blind_scheme import BlindNNScheme
+from nn_scheme.NCorrFP_scheme import NCorrFP
 
 
 def run():
@@ -17,9 +16,9 @@ def run():
     with open(config_file) as infile:
         config = json.load(infile)
 
-    scheme = BlindNNScheme(gamma=config['gamma'],
-                           xi=config['xi'],
-                           fingerprint_bit_length=config['fingerprint_bit_length'])
+    scheme = NCorrFP(gamma=config['gamma'],
+                     xi=config['xi'],
+                     fingerprint_bit_length=config['fingerprint_bit_length'])
     attack = BitFlippingAttack()
 
     fractions = np.array(config['size_of_subset'])
