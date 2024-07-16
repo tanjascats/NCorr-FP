@@ -63,15 +63,15 @@ def import_dataset_from_file(data_path, primary_key_attribute=None):
     return dataset, primary_key
 
 
-def import_fingerprinted_dataset(scheme_string, dataset_name, scheme_params, real_buyer_id=None):
-    if real_buyer_id is None:
+def import_fingerprinted_dataset(scheme_string, dataset_name, scheme_params, real_recipient_id=None):
+    if real_recipient_id is None:
         relation = dataset_name
     else:
         params_string = ""
         for param in scheme_params:
             params_string += str(param) + "_"
         filepath = "archive_schemes/" + scheme_string + "/fingerprinted_datasets/" + dataset_name + "_" + params_string + \
-                   str(real_buyer_id) + ".csv"
+                   str(real_recipient_id) + ".csv"
         relation = pd.read_csv(filepath)
         print("Dataset: " + filepath)
 
@@ -103,12 +103,12 @@ def set_bit(val, idx, mark):
     return val
 
 
-def write_dataset(fingerprinted_relation, scheme_string, dataset_name, scheme_params, buyer_id):
+def write_dataset(fingerprinted_relation, scheme_string, dataset_name, scheme_params, recipient_id):
     params_string = ""
     for param in scheme_params:
         params_string += str(param) + "_"
     new_path = "archive_schemes/" + scheme_string + "/fingerprinted_datasets/" + \
-               dataset_name + "_" + params_string + str(buyer_id) + ".csv"
+               dataset_name + "_" + params_string + str(recipient_id) + ".csv"
     fingerprinted_relation.to_csv(new_path, index=False)
     print("\tfingerprinted dataset written to: " + new_path)
 
@@ -149,7 +149,7 @@ def _read_data(dataset, primary_key_attribute=None, target_attribute=None):
     return relation
 
 
-def read_data_with_target(dataset_name, scheme_name=None, params=None, buyer_id=None):
+def read_data_with_target(dataset_name, scheme_name=None, params=None, recipient_id=None):
     if scheme_name is None:
         data = pd.read_csv("datasets/" + dataset_name + ".csv")
     else:
@@ -157,7 +157,7 @@ def read_data_with_target(dataset_name, scheme_name=None, params=None, buyer_id=
         for param in params:
             params_string += str(param) + "_"
         data = pd.read_csv("archive_schemes/" + scheme_name + "/fingerprinted_datasets/" + dataset_name +
-                           "_" + params_string + str(buyer_id) + ".csv")
+                           "_" + params_string + str(recipient_id) + ".csv")
     target_file = pd.read_csv("datasets/_" + dataset_name + ".csv")
     data["target"] = target_file["target"]
     return data

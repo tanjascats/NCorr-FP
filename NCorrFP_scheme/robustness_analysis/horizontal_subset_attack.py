@@ -44,6 +44,8 @@ def run():
             random.seed(seed)
 
             correct, misdiagnosis = 0, 0
+            detected_fingerprints = []
+            counts = []
             for i in range(config['n_fp_experiments']):
                 # fingerprint the data
                 secret_key = random.randint(0, 1000)
@@ -62,7 +64,10 @@ def run():
                     if suspect == 1:
                         correct += 1
                     elif suspect != -1:
-                            misdiagnosis += 1
+                        misdiagnosis += 1
+
+                    detected_fingerprints.append(scheme.detected_fp)
+                    counts.append(scheme.count)
 
             print("\n\n--------------------------------------------------------------\n\n")
             print("Data: " + config['data'])
@@ -79,6 +84,8 @@ def run():
             f.write("\nCorrect: " + str(correct) + "/" + str(config['n_experiments']*config['n_fp_experiments']))
             f.write("\nWrong: " + str(config['n_experiments']*config['n_fp_experiments'] - correct) + "/" + str(config['n_experiments']*config['n_fp_experiments'])
                   + "\n\t- out of which misdiagnosed: " + str(misdiagnosis))
+            f.write("\nDetected fingerprints: " + str(detected_fingerprints))
+            f.write("\nVotes: " + str(counts))
             f.write("\n\n--------------------------------------------------------------\n\n")
 
             results.append(correct)

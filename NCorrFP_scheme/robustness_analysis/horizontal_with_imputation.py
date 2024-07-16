@@ -68,7 +68,7 @@ for size in size_of_subset:
     for i in range(n_fp_experiments):
         # fingerprint the data
         secret_key = random.randint(0, 1000)
-        fp_dataset = scheme.insertion(dataset_name=data, buyer_id=1, secret_key=secret_key)
+        fp_dataset = scheme.insertion(dataset_name=data, recipient_id=1, secret_key=secret_key)
 
         for j in range(n_experiments):
             # perform the attack
@@ -83,7 +83,7 @@ for size in size_of_subset:
             imputed_data = release_data.append(synthetic_data)
             print(len(release_data))
             # try to extract the fingerprint
-            suspect = scheme.detection(dataset_name=data, real_buyer_id=1, secret_key=secret_key,
+            suspect = scheme.detection(dataset_name=data, real_recipient_id=1, secret_key=secret_key,
                                 dataset=imputed_data)
             if suspect == 1:
                 correct += 1

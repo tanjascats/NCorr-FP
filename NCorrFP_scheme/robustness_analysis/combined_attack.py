@@ -38,14 +38,14 @@ for combo in combinations:
     for i in range(n_fp_experiments):
         # fingerprint the data
         secret_key = random.randint(0, 1000)
-        fp_dataset = scheme.insertion(dataset_name=data, buyer_id=1, secret_key=secret_key)
+        fp_dataset = scheme.insertion(dataset_name=data, recipient_id=1, secret_key=secret_key)
 
         for j in range(n_experiments):
             # perform the attack
             release_data = attack.run(dataset=fp_dataset, fraction_subset=combo[0], number_of_columns=combo[1],
                                       fraction_flipping=combo[2])
             # try to extract the fingerprint
-            suspect = scheme.detection(dataset_name=data, real_buyer_id=1, secret_key=secret_key,
+            suspect = scheme.detection(dataset_name=data, real_recipient_id=1, secret_key=secret_key,
                                 dataset=release_data)
             if suspect == 1:
                 correct += 1

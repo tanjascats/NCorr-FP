@@ -53,7 +53,7 @@ results = {'full': []}
 for n in range(n_exp):
     # fingerprint the data
     scheme = CategoricalNeighbourhood(gamma=gamma, xi=2, fingerprint_bit_length=8)
-    fp_dataset = scheme.insertion(dataset_name="nursery", buyer_id=1, secret_key=secret_key)
+    fp_dataset = scheme.insertion(dataset_name="nursery", recipient_id=1, secret_key=secret_key)
     # same prepocessing as above
     fp_dataset = fp_dataset.drop("Id", axis=1)
     fp_dataset_dummies = pd.get_dummies(fp_dataset)

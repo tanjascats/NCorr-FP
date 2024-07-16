@@ -46,7 +46,7 @@ secret_key = 3255  # increase every run
 for n in range(n_exp):
     # fingerprint the data
     scheme = CategoricalNeighbourhood(gamma=gamma, xi=2, fingerprint_bit_length=64)
-    fp_dataset = scheme.insertion(dataset_name="nursery", buyer_id=1, secret_key=secret_key)
+    fp_dataset = scheme.insertion(dataset_name="nursery", recipient_id=1, secret_key=secret_key)
     # same prepocessing as above
     fp_dataset = fp_dataset.drop("Id", axis=1)
     fp_dataset = pd.get_dummies(fp_dataset)

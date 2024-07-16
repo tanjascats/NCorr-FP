@@ -47,7 +47,7 @@ data = encoder.fit_transform(data).toarray().astype(np.int)
 # this should also be in a loop because the randomness of the fingerprint affects the results
 for fp_exp in range(n_fingerprint_experiments):
 
-    german_credit_fp = scheme.insertion(dataset_name="german_credit", buyer_id=0, secret_key=random.randint(0, 1000))
+    german_credit_fp = scheme.insertion(dataset_name="german_credit", recipient_id=0, secret_key=random.randint(0, 1000))
     german_credit_fp = add_target(german_credit_fp, "german_credit")
 
     for cat in categorical_attributes:

@@ -1,6 +1,9 @@
 import attacks.bit_flipping_attack
 from NCorrFP_scheme.NCorrFP_scheme import NCorrFP
-
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
 
 def test_knn():
 #    scheme = CategoricalNeighbourhood(gamma=1)
@@ -108,4 +111,13 @@ def test_demo():
 
 
 if __name__ == '__main__':
-    test_demo()
+   #test_demo()
+#    all_data = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1]
+#    print(np.mean(all_data))
+#    print(np.std(all_data))
+#    plt.boxplot(all_data)
+#    plt.show()
+   data = pd.DataFrame(
+       {'error': ['type1', 'type2', 'type3'], 'released_subset': [0.05, 0.05, 0.05], 'mean': [0.025, 1.85, 1.125]})
+   sns.histplot(data, x='released_subset', weights='mean', hue='error', multiple='stack')
+   plt.show()
