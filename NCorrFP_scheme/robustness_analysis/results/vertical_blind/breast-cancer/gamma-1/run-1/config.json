@@ -2,7 +2,7 @@
   "data": "breast-cancer",
   "n_experiments": 10,
   "n_fp_experiments": 3,
-  "gamma": 5,
+  "gamma": 1,
   "xi": 1,
   "fingerprint_bit_length": 16,
   "correlated_attributes": ["age", "menopause", "inv-nodes", "node-caps"],

@@ -1,11 +1,11 @@
 {
   "data": "breast-cancer",
-  "n_experiments": 10,
-  "n_fp_experiments": 4,
-  "gamma": 1,
+  "n_experiments": 5,
+  "n_fp_experiments": 2,
+  "gamma": 5,
   "xi": 1,
   "fingerprint_bit_length": 8,
   "correlated_attributes": ["age", "menopause", "inv-nodes", "node-caps"],
   "size_of_subset": [0.5, 0.3, 0.26, 0.22, 0.18, 0.14, 0.1, 0.06, 0.02],
-  "seed": 334
+  "seed": 333
 }

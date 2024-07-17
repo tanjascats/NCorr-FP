@@ -33,7 +33,7 @@ def run(config_file=None):
     for size in fractions:
         if not done:
             # for reproducibility
-            seed = 332
+            seed = config['seed']
             random.seed(seed)
 
             correct, misdiagnosis = 0, 0
