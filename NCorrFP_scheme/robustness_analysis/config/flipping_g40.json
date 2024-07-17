@@ -1,0 +1,11 @@
+{
+  "data": "adult",
+  "n_experiments": 10,
+  "n_fp_experiments": 8,
+  "gamma": 40,
+  "xi": 1,
+  "fingerprint_bit_length": 64,
+  "correlated_attributes": ["relationship", "marital-status", "occupation", "workclass",
+                                                      "education-num"],
+  "size_of_subset": [0.5, 0.3, 0.26, 0.22, 0.18, 0.14, 0.1, 0.06, 0.02]
+}

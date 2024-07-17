@@ -21,8 +21,8 @@ def run():
 
 #    size_of_subset = np.array([0.95, 0.9 , 0.85, 0.8 , 0.75, 0.7 , 0.65, 0.6 , 0.55, 0.5 ,
 #       0.45, 0.4 , 0.35, 0.3 , 0.25, 0.2 , 0.15, 0.1 , 0.05]) ## if bad robustness is expected, use this to optimise the runs
-    size_of_subset = np.array([0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.40, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75,
-              0.8, 0.85, 0.9, 0.95, 1.0]) ## if good robustness is expected
+    size_of_subset = np.array([0.05, 0.1])#, 0.15, 0.2, 0.25, 0.3, 0.35, 0.40, 0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75,
+              #0.8, 0.85, 0.9, 0.95, 1.0]) ## if good robustness is expected
     results = []
     #gamma = 1; xi = 2; fingerprint_bit_length = 16
 
@@ -35,7 +35,7 @@ def run():
     timestamp = str(datetime.fromtimestamp(int(datetime.timestamp(datetime.now())))).replace(' ', '-').replace(':','-')
     f = open("log/"
              "horizontal_subset_attack_{}_{}.txt".format(config['data'], timestamp), "a+")
-
+    df = dict()
     done = False
     for size in size_of_subset:
         if not done:
@@ -68,7 +68,9 @@ def run():
 
                     detected_fingerprints.append(scheme.detected_fp)
                     counts.append(scheme.count)
-
+            if str(config['gamma']) not in df.keys():
+                df[str(config['gamma'])] = dict()
+            df[str(config['gamma'])][str(size)] = detected_fingerprints
             print("\n\n--------------------------------------------------------------\n\n")
             print("Data: " + config['data'])
             print("(size of subset, gamma, xi, length of a fingerprint): " + str((size, config['gamma'], config['xi'], config['fingerprint_bit_length'])))
@@ -104,6 +106,11 @@ def run():
     f.write("\nCorrect: " + str(results) + "\n\t/" + str(str(config['n_experiments']*config['n_fp_experiments'])))
     f.write("\n\n--------------------------------------------------------------\n\n")
     f.close()
+
+    with open('detection_error_analysis/'
+              'horizontal_attack/'
+              'detected_fingerprints_test.json', 'w+') as outfile:
+        json.dump(df, outfile)
 
 
 if __name__ == '__main__':

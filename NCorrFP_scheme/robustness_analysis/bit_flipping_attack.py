@@ -5,14 +5,19 @@ import random
 from datetime import datetime
 import numpy as np
 import json
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from attacks.bit_flipping_attack import BitFlippingAttack
 from NCorrFP_scheme.NCorrFP_scheme import NCorrFP
 
 
-def run():
+def run(config_file=None):
     results = []
-    config_file = "config/flipping.json"
+    if config_file is None:
+        config_file = "config/flipping.json"
     with open(config_file) as infile:
         config = json.load(infile)
 
@@ -23,7 +28,7 @@ def run():
 
     fractions = np.array(config['size_of_subset'])
     timestamp = str(datetime.fromtimestamp(int(datetime.timestamp(datetime.now())))).replace(' ', '-').replace(':', '-')
-
+    df = dict()
     done = False
     for size in fractions:
         if not done:
@@ -32,6 +37,8 @@ def run():
             random.seed(seed)
 
             correct, misdiagnosis = 0, 0
+            detected_fingerprints = []
+            counts = []
             for i in range(config['n_fp_experiments']):
                 # fingerprint the data
                 secret_key = random.randint(0, 1000)
@@ -50,7 +57,11 @@ def run():
                         correct += 1
                     elif suspect != -1:
                         misdiagnosis += 1
-
+                    detected_fingerprints.append(scheme.detected_fp)
+                    counts.append(scheme.count)
+            if str(config['gamma']) not in df.keys():
+                df[str(config['gamma'])] = dict()
+            df[str(config['gamma'])][str(size)] = detected_fingerprints
             # write to log file
             f = open("log/"
                      "/bit_flipping_attack_{}_{}.txt".format(config['data'], timestamp), "a+")
@@ -63,6 +74,8 @@ def run():
             f.write("\nWrong: " + str(config['n_experiments'] * config['n_fp_experiments'] - correct) + "/" + str(
                 config['n_experiments'] * config['n_fp_experiments'])
                     + "\n\t- out of which misdiagnosed: " + str(misdiagnosis))
+            f.write("\nDetected fingerprints: " + str(detected_fingerprints))
+            f.write("\nVotes: " + str(counts))
             f.write("\n\n--------------------------------------------------------------\n\n")
 
             results.append(correct)
@@ -98,6 +111,15 @@ def run():
         (config['gamma'], config['xi'], config['fingerprint_bit_length'])))
     print("\nCorrect: " + str(results) + "\n\t/" + str(str(config['n_experiments'] * config['n_fp_experiments'])))
 
+    with open('detection_error_analysis/'
+              'flipping_attack/'
+              'detected_fingerprints_test.json', 'w+') as outfile:
+        json.dump(df, outfile)
+
 
 if __name__ == '__main__':
-    run()
+    if len(sys.argv) > 1:
+        config_file_path = sys.argv[1]
+        run(config_file_path)
+    else:
+        run()

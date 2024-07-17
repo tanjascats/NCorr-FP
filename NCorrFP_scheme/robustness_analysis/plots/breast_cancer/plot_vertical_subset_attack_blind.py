@@ -14,15 +14,18 @@ fig, ax = plt.subplots(2, 2, sharex='col', sharey='row')
 x = np.array([i for i in range(11)])  # -> number of columns released (the results are in ascending order of
                                         # number of columns DELETED)
 y = [None, None, None, None]
+# baselines (random fp) --> fingerprinting_toolbox/evaluation/robustness/vertical/
+y_b = [None, None, None, None]
 
 n_exp = 20
-# !!!! RESULTS FOR BREAST CANCER L=8!!!!
 # gamma = 1
 y[0] = n_exp - np.array([0, 4, 4, 4, 7, 8, 13, 17, 16, 20, 20])
+y_b[0] = np.array([1, 1, 1.0, 0.97, 0.89, 0.69, 0.27, 0.04, 0.0, 0, 0])
 # ----------------------------------------------------------------------------- #
 # ----------------------------------------------------------------------------- #
 # gamma = 2
 y[1] = n_exp - np.array([0, 0, 3, 2, 3, 3, 7, 7, 8, 9, 20])
+y_b[1] = np.array([1, 1, 1.0, 1.0, 0.96, 0.9, 0.59, 0.24,  0.07,  0.0,0])
 # ----------------------------------------------------------------------------- #
 # ----------------------------------------------------------------------------- #
 # gamma = 3
@@ -34,28 +37,16 @@ y[3] = n_exp - np.array([0, 0, 0, 0, 0, 0, 0, 1, 2, 1, 20])
 # ----------------------------------------------------------------------------- #
 # ----------------------------------------------------------------------------- #
 
-for i in range(2):
-    for j in range(2):
-        y[2*i+j] = (y[2*i+j] / n_exp) * 100
-        ax[i, j].plot(x, y[2*i+j])
-        plt.grid()
-
-# todo test how they look all in one plot
-ax[0, 0].plot(x, y[1])
-ax[0, 0].plot(x, y[2])
-ax[0, 0].plot(x, y[3])
-# todo end of test
-
-fig.text(0.5, 0.02, 'Number of columns released', ha='center')
-fig.text(0.04, 0.5, 'Detected fingerprints(%)', va='center', rotation='vertical')
 
 # --------------------------------------------------------------------- #
 # ----------------- ALL IN ONE FIGURE --------------------------------- #
 # --------------------------------------------------------------------- #
 fig2, ax2 = plt.subplots(1, 1, sharex='col', sharey='row')
 ax2.set_prop_cycle(color=colors)
+ax2.plot(x, y_b[0], label='baselines (random FP)', color=colors[0], linestyle=(0, (5, 5)), linewidth=1)
 ax2.plot(x, y[0]/100, label='$\gamma$ = 1')#, c='0.15')
 ax2.plot(x, y[1]/100, label='$\gamma$ = 2')#, c='0.35')
+ax2.plot(x, y_b[1], color=colors[1], linestyle=(0, (5, 5)), linewidth=1)
 ax2.plot(x, y[2]/100, label='$\gamma$ = 3')#, c='0.65')
 ax2.plot(x, y[3]/100, label='$\gamma$ = 5')#, c='0.85')
 # ax2.plot(x, y[3])

@@ -1,0 +1,15 @@
+2024-07-17 22:45:51
+seed: 332
+Data: adult
+(fraction flipped, gamma, xi, length of a fingerprint): (0.5, 40, 1, 64)
+Correct: 0/20
+Wrong: 20/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (40, 1, 64)
+Correct: [0]
+	/20

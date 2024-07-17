@@ -1,16 +1,13 @@
 {
-  "data": "adult",
-  "n_experiments": 5,
-  "n_fp_experiments": 4,
-  "gamma": 5,
+  "data": "breast-cancer",
+  "n_experiments": 10,
+  "n_fp_experiments": 3,
+  "gamma": 1,
   "xi": 1,
-  "fingerprint_bit_length": 64,
-  "correlated_attributes": ["relationship", "marital-status", "occupation", "workclass",
-                                                      "education-num"],
-  "original_columns": ["age","workclass","fnlwgt","education","education-num",
-                                                 "marital-status","occupation",
-                                                 "relationship","race","sex","capital-gain","capital-loss",
-                                                 "hours-per-week","native-country","income"],
-  "size_of_subset": [14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1],
-  "seed": 335
+  "fingerprint_bit_length": 8,
+  "correlated_attributes": ["age", "menopause", "inv-nodes", "node-caps"],
+  "original_columns": ["age","menopause","tumor-size","inv-nodes","node-caps","deg-malig","breast","breast-quad",
+    "irradiat","recurrence"],
+  "size_of_subset": [9,8,7,6,5,4,3,2,1],
+  "seed": 333
 }

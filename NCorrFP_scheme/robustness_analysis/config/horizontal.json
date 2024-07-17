@@ -1,7 +1,7 @@
 {
   "data": "adult",
-  "n_experiments": 10,
-  "n_fp_experiments": 8,
+  "n_experiments": 1,
+  "n_fp_experiments": 2,
   "gamma": 20,
   "xi": 1,
   "fingerprint_bit_length": 64,
