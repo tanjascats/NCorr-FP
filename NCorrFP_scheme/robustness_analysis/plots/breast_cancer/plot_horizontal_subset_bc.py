@@ -59,7 +59,7 @@ y_b[3] = np.array([1, 1.0, 1.0,  0.87,  0.61, 0.39, 0.11, 0.05,  0.01,  0.0, 0])
 fig2, ax2 = plt.subplots(1, 1, sharex='col', sharey='row')
 ax2.set_prop_cycle(color=colors)
 ax2.plot(x_b, y_b[0], label='baselines (random FP)', color=colors[0], linestyle=(0, (5, 5)), linewidth=1)
-ax2.plot(x, y[0]/n_exp, label='$\gamma$ = 1 (NCorr)')
+ax2.plot(x, y[0]/n_exp, label='$\gamma$ = 1 (NCorr-FP)')
 
 ax2.plot(x, y[1]/n_exp, label='$\gamma$ = 2')
 ax2.plot(x_b, y_b[1], color=colors[1], linestyle=(0, (5, 5)), linewidth=1)

@@ -169,11 +169,11 @@ for key in detected_fingerprints_g5:
         err_type1 = votes_g5[float(key)][i].count([0, 0])
         # type 2
         err_type2 = tot_errs - err_type1 - err_type3
-
-        total_errors.append(tot_errs)
-        tot_errtype1.append(err_type1)
-        tot_errtype2.append(err_type2)
-        tot_errtype3.append(err_type3)
+        if tot_errs > 0:
+            total_errors.append(tot_errs)
+            tot_errtype1.append(err_type1)
+            tot_errtype2.append(err_type2)
+            tot_errtype3.append(err_type3)
         i += 1
     errtype1[key] = tot_errtype1
     errtype2[key] = tot_errtype2
@@ -201,10 +201,11 @@ for key in detected_fingerprints_g40:
         # type 2
         err_type2 = tot_errs - err_type1 - err_type3
 
-        total_errors.append(tot_errs)
-        tot_errtype1.append(err_type1)
-        tot_errtype2.append(err_type2)
-        tot_errtype3.append(err_type3)
+        if tot_errs > 0:
+            total_errors.append(tot_errs)
+            tot_errtype1.append(err_type1)
+            tot_errtype2.append(err_type2)
+            tot_errtype3.append(err_type3)
         i += 1
     errtype1_g40[key] = tot_errtype1
     errtype2_g40[key] = tot_errtype2
@@ -264,8 +265,11 @@ released_subset_flat = []
 mean_flat = []
 error_flat = []
 gamma_flat = []
-for k in errtype1:
-    mean_flat += [np.mean(errtype1[k]), np.mean(errtype2[k]), np.mean(errtype3[k])]
+for k in all_errors_g40:
+    if k in errtype1:
+        mean_flat += [np.mean(errtype1[k]), np.mean(errtype2[k]), np.mean(errtype3[k])]
+    else:
+        mean_flat += [0, 0, 0]
     error_flat += ['Type 1', 'Type 2', 'Type 3']
     released_subset_flat += [int(float(k)*100), int(float(k)*100), int(float(k)*100)]
     gamma_flat += [5, 5, 5]
@@ -273,14 +277,18 @@ error_types = pd.DataFrame({'error': error_flat, 'released_subset': released_sub
                             'gamma': gamma_flat})
 #fig, ax = plt.subplots(1, 1)
 sns.histplot(error_types, x='released_subset', weights='mean', hue='error', multiple='stack',
-             palette=['#0d0887', '#5c56f5', '#d0cffc']) #, ax=ax) # 100%, 65%, 90%
+             palette=['#0d0887', '#5c56f5', '#d0cffc'], discrete=True, shrink=3.) #, ax=ax) # 100%, 65%, 90%
 plt.show()
 
 released_subset_flat = []
 mean_flat = []
 error_flat = []
 gamma_flat = []
-for k in errtype1_g40:
+print(all_errors_g40)
+print(errtype1_g40)
+print(errtype2_g40)
+print(errtype3_g40)
+for k in all_errors_g40:
     mean_flat += [np.mean(errtype1_g40[k]), np.mean(errtype2_g40[k]), np.mean(errtype3_g40[k])]
     error_flat += ['Type 1', 'Type 2', 'Type 3']
     released_subset_flat += [int(float(k)*100), int(float(k)*100), int(float(k)*100) ]
@@ -289,5 +297,5 @@ error_types_g40 = pd.DataFrame({'error': error_flat, 'released_subset': released
                             'gamma': gamma_flat})
 
 sns.histplot(error_types_g40, x='released_subset', weights='mean', hue='error', multiple='stack',
-             palette=['#e26462', '#eb9593', '#f7d4d4'])
+             palette=['#e26462', '#eb9593', '#f7d4d4'], discrete=True, shrink=3.)
 plt.show()
