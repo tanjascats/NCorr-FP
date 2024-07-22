@@ -1,105 +1,4 @@
-2024-06-03 18:10:24
-seed: 332
-Data: adult
-(fraction flipped, gamma, xi, length of a fingerprint): (0.02, 5, 1, 64)
-Correct: 20/20
-Wrong: 0/20
-	- out of which misdiagnosed: 0
-
---------------------------------------------------------------
-
-intermediate summary
-
-(gamma, xi, length of a fingerprint): (5, 1, 64)
-Correct: [20]
-	/202024-06-03 19:18:16
-seed: 332
-Data: adult
-(fraction flipped, gamma, xi, length of a fingerprint): (0.06, 5, 1, 64)
-Correct: 20/20
-Wrong: 0/20
-	- out of which misdiagnosed: 0
-
---------------------------------------------------------------
-
-intermediate summary
-
-(gamma, xi, length of a fingerprint): (5, 1, 64)
-Correct: [20, 20]
-	/20
-
-2024-06-04 14:31:53
-seed: 332
-Data: adult
-(fraction flipped, gamma, xi, length of a fingerprint): (0.1, 5, 1, 64)
-Correct: 20/20
-Wrong: 0/20
-	- out of which misdiagnosed: 0
-
---------------------------------------------------------------
-
-intermediate summary
-
-(gamma, xi, length of a fingerprint): (5, 1, 64)
-Correct: [20]
-	/202024-06-04 17:46:15
-seed: 332
-Data: adult
-(fraction flipped, gamma, xi, length of a fingerprint): (0.14, 5, 1, 64)
-Correct: 20/20
-Wrong: 0/20
-	- out of which misdiagnosed: 0
-
---------------------------------------------------------------
-
-intermediate summary
-
-(gamma, xi, length of a fingerprint): (5, 1, 64)
-Correct: [20, 20]
-	/202024-06-04 20:35:50
-seed: 332
-Data: adult
-(fraction flipped, gamma, xi, length of a fingerprint): (0.18, 5, 1, 64)
-Correct: 20/20
-Wrong: 0/20
-	- out of which misdiagnosed: 0
-
---------------------------------------------------------------
-
-intermediate summary
-
-(gamma, xi, length of a fingerprint): (5, 1, 64)
-Correct: [20, 20, 20]
-	/202024-06-05 14:34:48
-seed: 332
-Data: adult
-(fraction flipped, gamma, xi, length of a fingerprint): (0.22, 5, 1, 64)
-Correct: 20/20
-Wrong: 0/20
-	- out of which misdiagnosed: 0
-
---------------------------------------------------------------
-
-intermediate summary
-
-(gamma, xi, length of a fingerprint): (5, 1, 64)
-Correct: [20, 20, 20, 20]
-	/202024-06-06 13:23:47
-seed: 332
-Data: adult
-(fraction flipped, gamma, xi, length of a fingerprint): (0.26, 5, 1, 64)
-Correct: 20/20
-Wrong: 0/20
-	- out of which misdiagnosed: 0
-
---------------------------------------------------------------
-
-intermediate summary
-
-(gamma, xi, length of a fingerprint): (5, 1, 64)
-Correct: [20, 20, 20, 20, 20, 20, 20]
-	/20
-
+2024-07-18 15:20:13
 seed: 332
 Data: adult
 (fraction flipped, gamma, xi, length of a fingerprint): (0.5, 5, 1, 64)
@@ -115,10 +14,11 @@ intermediate summary
 
 (gamma, xi, length of a fingerprint): (5, 1, 64)
 Correct: [80]
-	/80
-
-SUMMARY
+	/80SUMMARY
 2024-07-18 15:20:13
 (gamma, xi, length of a fingerprint): (5, 1, 64)
 Correct: [80, 80, 80, 80, 80, 80, 80, 80, 80]
 	/80
+
+--------------------------------------------------------------
+

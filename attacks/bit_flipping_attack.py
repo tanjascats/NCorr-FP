@@ -33,3 +33,22 @@ class BitFlippingAttack(Attack):
         print("Bit-flipping attack runtime on " + str(fraction*100) + "% of entries: " +
               str(time.time() - start) + " sec.")
         return altered
+
+    def run_temp(self, dataset, fraction):
+        start = time.time()
+        # never alters the ID or the target (if provided)
+        #altered = dataset.copy()
+        for i in range(int(fraction * (dataset.size - len(dataset)))):
+            row = random.choice(dataset['Id'])
+            column = random.choice(dataset.columns.drop(labels=["Id"]))
+            value = dataset[column][row]
+            if dataset[column].dtype == 'O':
+                # categorical
+                domain = list(set(dataset[column][:]))
+                #domain.remove(value)
+                new_value = random.choice(domain)
+            #altered.at[row, column] = new_value
+
+        print("Bit-flipping attack runtime on " + str(fraction * 100) + "% of entries: " +
+              str(time.time() - start) + " sec.")
+        return True

@@ -51,6 +51,7 @@ def run(config_file=None):
             counts = []
             for i in range(config['n_fp_experiments']):
                 # fingerprint the data
+                # random.seed(seed + i)
                 secret_key = random.randint(0, 1000)
                 fp_dataset = scheme.insertion(dataset_name=config['data'],
                                               recipient_id=1, secret_key=secret_key,

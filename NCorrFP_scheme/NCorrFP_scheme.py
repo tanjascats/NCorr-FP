@@ -698,3 +698,50 @@ class NCorrFP():
         else:
             print("Runtime: " + str(round(runtime, 2)) + " sec.")
         return recipient_no, iter_log
+
+    def detection_temp(self, dataset, secret_key, primary_key=None, correlated_attributes=None, original_columns=None):
+        """
+
+        Args:
+            dataset:
+            secret_key:
+            primary_key:
+            correlated_attributes:
+            original_columns:
+
+        Returns:
+            recipient_no: identification of the recipient of detected fingeprint
+            detected_fp: detected fingerprint bitstring
+            count: array of bit-wise fingerprint votes
+
+        """
+        print("Start NCorr fingerprint detection algorithm ...")
+        print("\tgamma: " + str(self.gamma) + "\n\tcorrelated attributes: " + str(correlated_attributes))
+
+        relation_fp = _read_data(dataset)
+        indices = list(relation_fp.dataframe.index)
+        # number of numerical attributes minus primary key
+        number_of_num_attributes = len(relation_fp.dataframe.select_dtypes(exclude='object').columns) - 1
+        number_of_cat_attributes = len(relation_fp.dataframe.select_dtypes(include='object').columns)
+        tot_attributes = number_of_num_attributes + number_of_cat_attributes
+        categorical_attributes = relation_fp.dataframe.select_dtypes(include='object').columns
+
+        start = time.time()
+
+        start_balling = time.time()
+        # ball trees from all-except-one attribute and all attributes
+
+        for r in relation_fp.dataframe.iterrows():
+            seed = (self.secret_key << self.__primary_key_len) + r[1][0]  # primary key must be the first column
+            random.seed(seed)
+            # this tuple was marked
+            if random.randint(0, _MAXINT) % self.gamma == 0:
+                # this attribute was marked (skip the primary key)
+                attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # add 1 to skip the primary key
+
+        runtime = time.time() - start
+        if runtime < 1:
+            print("Runtime: " + str(int(runtime)*1000) + " ms.")
+        else:
+            print("Runtime: " + str(round(runtime, 2)) + " sec.")
+        return True
