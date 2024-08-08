@@ -1,2 +1,2 @@
-# Dissertation code
+# NCorr-FP scheme
 
