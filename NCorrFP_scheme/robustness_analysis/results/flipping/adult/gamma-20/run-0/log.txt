@@ -1,0 +1,120 @@
+    2024-06-12 12:49:40
+seed: 332
+Data: adult
+(fraction flipped, gamma, xi, length of a fingerprint): (0.3, 20, 1, 64)
+Correct: 3/20
+Wrong: 17/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (20, 1, 64)
+Correct: [3]
+	/202024-06-12 17:42:30
+seed: 332
+Data: adult
+(fraction flipped, gamma, xi, length of a fingerprint): (0.26, 20, 1, 64)
+Correct: 10/20
+Wrong: 10/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (20, 1, 64)
+Correct: [3, 10]
+	/202024-06-12 20:55:20
+seed: 332
+Data: adult
+(fraction flipped, gamma, xi, length of a fingerprint): (0.22, 20, 1, 64)
+Correct: 13/20
+Wrong: 7/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (20, 1, 64)
+Correct: [3, 10, 13]
+	/202024-06-13 12:41:38
+seed: 332
+Data: adult
+(fraction flipped, gamma, xi, length of a fingerprint): (0.18, 20, 1, 64)
+Correct: 12/20
+Wrong: 8/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (20, 1, 64)
+Correct: [3, 10, 13, 12]
+	/202024-06-13 16:09:36
+seed: 332
+Data: adult
+(fraction flipped, gamma, xi, length of a fingerprint): (0.14, 20, 1, 64)
+Correct: 19/20
+Wrong: 1/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (20, 1, 64)
+Correct: [3, 10, 13, 12, 19]
+	/202024-06-14 12:51:35
+seed: 332
+Data: adult
+(fraction flipped, gamma, xi, length of a fingerprint): (0.1, 20, 1, 64)
+Correct: 16/20
+Wrong: 4/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (20, 1, 64)
+Correct: [3, 10, 13, 12, 19, 16]
+	/202024-06-14 15:24:26
+seed: 332
+Data: adult
+(fraction flipped, gamma, xi, length of a fingerprint): (0.06, 20, 1, 64)
+Correct: 19/20
+Wrong: 1/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (20, 1, 64)
+Correct: [3, 10, 13, 12, 19, 16, 19]
+	/202024-06-14 16:11:39
+seed: 332
+Data: adult
+(fraction flipped, gamma, xi, length of a fingerprint): (0.02, 20, 1, 64)
+Correct: 19/20
+Wrong: 1/20
+	- out of which misdiagnosed: 0
+
+--------------------------------------------------------------
+
+intermediate summary
+
+(gamma, xi, length of a fingerprint): (20, 1, 64)
+Correct: [3, 10, 13, 12, 19, 16, 19, 19]
+	/20SUMMARY
+2024-06-14 16:11:39
+(gamma, xi, length of a fingerprint): (20, 1, 64)
+Correct: [3, 10, 13, 12, 19, 16, 19, 19]
+	/20
+
+--------------------------------------------------------------
+
