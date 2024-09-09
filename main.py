@@ -4,21 +4,14 @@ from NCorrFP_scheme.NCorrFP_scheme import NCorrFP
 
 def test_knn():
 #    scheme = CategoricalNeighbourhood(gamma=1)
-    scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
+    scheme = NCorrFP(gamma=5, fingerprint_bit_length=16)
     data = "datasets/breast_cancer_full.csv"
-    fingerprinted_data = scheme.insertion('breast-cancer', primary_key='Id', secret_key=601, recipient_id=4,
-                                          outfile='NCorrFP_scheme/outfiles/fp_data_blind_corr_all_attributes.csv',
-                                          correlated_attributes=['age', 'menopause', 'inv-nodes', 'node-caps'])
-#
-#    suspect = scheme.detection(fingerprinted_data, secret_key=100, original_data=data)
-    #print(fingerprinted_data)
-    #columns = ['Id'] + list(fingerprinted_data.columns)
-    #fingerprinted_data['Id'] = fingerprinted_data.index
-    #fingerprinted_data = fingerprinted_data[columns]
-    #print(fingerprinted_data)
+    fingerprinted_data = scheme.insertion('breast-cancer', primary_key='Id', secret_key=101, recipient_id=4,
+                                          outfile='NCorrFP_scheme/outfiles/fp_data_blind_corr_inv_node_101_g5.csv',
+                                          correlated_attributes=['inv-nodes', 'node-caps'])
 
-    suspect = scheme.detection(fingerprinted_data, secret_key=601, primary_key='Id',
-                               correlated_attributes=['age', 'menopause', 'inv-nodes', 'node-caps'],
+    suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
+                               correlated_attributes=['inv-nodes', 'node-caps'],
                                original_columns=["age","menopause","tumor-size","inv-nodes","node-caps","deg-malig","breast","breast-quad",
     "irradiat","recurrence"])
 
@@ -95,11 +88,11 @@ def test_flipping_adult():
 def test_demo():
     scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
     data = "datasets/breast_cancer_full.csv"
-    fingerprinted_data, iter_log = scheme.demo_insertion('breast-cancer', primary_key='Id', secret_key=601, recipient_id=4,
+    fingerprinted_data, iter_log = scheme.demo_insertion('breast-cancer', primary_key='Id', secret_key=501, recipient_id=4,
                                           outfile='NCorrFP_scheme/outfiles/fp_data_blind_corr_all_attributes.csv',
                                           correlated_attributes=['age', 'menopause', 'inv-nodes', 'node-caps'])
     #
-    suspect, d_iter_log = scheme.demo_detection(fingerprinted_data, secret_key=601, primary_key='Id',
+    suspect, d_iter_log = scheme.demo_detection(fingerprinted_data, secret_key=501, primary_key='Id',
                                correlated_attributes=['age', 'menopause', 'inv-nodes', 'node-caps'],
                                original_columns=["age", "menopause", "tumor-size", "inv-nodes", "node-caps",
                                                  "deg-malig", "breast", "breast-quad",
@@ -108,4 +101,4 @@ def test_demo():
 
 
 if __name__ == '__main__':
-    test_vertical_adult()
+    test_knn()
