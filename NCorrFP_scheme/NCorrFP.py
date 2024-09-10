@@ -1,4 +1,5 @@
 import numpy.random as random
+import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from sklearn.neighbors import BallTree
 from bitstring import BitArray
@@ -19,7 +20,7 @@ def init_balltrees(correlated_attributes, relation):
     Balltrees for correlated attributes are created from the attribute's correlated attributes.
     Balltrees for other attributes are created from all other attributes.
     Args:
-        correlated_attributes: a list of (lists of) correlated attributes
+        correlated_attributes: (strictly) a list of lists (groups) of correlated attributes
         relation: the DataFrame of the dataset
 
     Returns: a dictionary (attribute name: balltree)
@@ -28,19 +29,67 @@ def init_balltrees(correlated_attributes, relation):
     start_training_balltrees = time.time()
     # ball trees from all-except-one attribute and all attributes
     balltree = dict()
-    for i in relation.columns:
-        if i in correlated_attributes:
-            balltree_i = BallTree(relation[correlated_attributes].drop(i, axis=1), metric="hamming")
-        else:
-            balltree_i = BallTree(relation.drop(i, axis=1), metric='hamming')
-        balltree[i] = balltree_i
+    for attr in relation.columns:
+        # get the index of a list of correlated attributes to attr; if attr is not correlated then return None
+        index = next((i for i, sublist in enumerate(correlated_attributes) if attr in sublist), None)
+        if index is not None:  # if attr is part of any group of correlations
+            balltree_i = BallTree(relation[correlated_attributes[index]].drop(attr, axis=1), metric="hamming")
+        else:  # if attr is not correlated to anything
+            balltree_i = BallTree(relation.drop(attr, axis=1), metric='hamming')
+        balltree[attr] = balltree_i
     print("Training balltrees in: " + str(round(time.time() - start_training_balltrees, 2)) + " sec.")
     return balltree
 
 
+def merge_mutually_correlated_groups(megalist):
+    # Iteratively merge lists that have any common elements
+    merged = []
+
+    for sublist in megalist:
+        # Find all existing lists in merged that share elements with the current sublist
+        to_merge = [m for m in merged if any(elem in m for elem in sublist)]
+
+        # Remove the lists that will be merged from merged
+        for m in to_merge:
+            merged.remove(m)
+
+        # Merge the current sublist with the found lists and add back to merged
+        merged.append(set(sublist).union(*to_merge))
+
+    # Convert sets back to lists
+    return [list(group) for group in merged]
+
+
+def parse_correlated_attrs(correlated_attributes, relation):
+    """
+    Checks the validity of passed arguments for correlated attributes. They can be either a list, list of lists or None.
+    Args:
+        correlated_attributes: argument provided by the user
+        relation: pandas DataFrame dataset
+
+    Returns: list of groups (lists) of correlated attributes
+
+    """
+    # correlated attributes are treated always as a list of lists even if there is only one group of corr. attributes
+    if correlated_attributes is None:
+        if 'Id' in relation.columns:
+            relation = relation.drop('Id', axis=1)
+        correlated_attributes = [relation.columns[:]]  # everything is correlated if not otherwise specified
+        # Check if the input is a list of lists
+    elif isinstance(correlated_attributes, list) and all(isinstance(i, list) for i in correlated_attributes):
+        # It's a list of lists; multiple groups of correlated attributes
+        # If there are multiple correlation groups with the same attribute, we consider them all mutually correlated
+        correlated_attributes = merge_mutually_correlated_groups(correlated_attributes)
+        correlated_attributes = [pd.Index(corr_group) for corr_group in correlated_attributes]
+    elif isinstance(correlated_attributes, list):
+        # It's a single list
+        correlated_attributes = [pd.Index(correlated_attributes)]
+    else:
+        raise ValueError("Input correlated_attributes must be either a list or a list of lists")
+    return correlated_attributes
+
+
 class NCorrFP():
-    # todo: check how the non-correlated attributes are marked -- DONE: we look at their correlation with mutually correlated attributes which maybe is not ideal. Change such that we look at ALL the attributes (comments below)
-    # todo: add support for multiple groups of correlated attributes
     # todo: add support for looking at frequencies/distributions of continuous attributes
     # supports the dataset size of up to 1,048,576 entries
     __primary_key_len = 20
@@ -148,12 +197,8 @@ class NCorrFP():
             relation[cat] = label_enc.fit_transform(relation[cat])
             label_encoders[cat] = label_enc
 
+        correlated_attributes = parse_correlated_attrs(correlated_attributes, relation)
         # ball trees from user-specified correlated attributes
-        if correlated_attributes is None:
-            correlated_attributes = relation.columns[:]  # everything is correlated if not otherwise specified
-        else:
-            correlated_attributes = pd.Index(correlated_attributes)
-
         balltree = init_balltrees(correlated_attributes, relation.drop('Id', axis=1))
 
         fingerprinted_relation = relation.copy()
@@ -182,9 +227,11 @@ class NCorrFP():
                 # # # otherwise one of the less frequent ones
 
                 # selecting attributes for knn search -> this is user specified
-                # todo: refactor accordingly to work for multiple groups of correlated attributes
-                if attr_name in correlated_attributes:
-                    other_attributes = correlated_attributes.tolist().copy()
+                # get the index of a group of correlated attributes to attr; if attr is not correlated then return None
+                corr_group_index = next((i for i, sublist in enumerate(correlated_attributes) if attr_name in sublist), None)
+                # if attr_name in correlated_attributes:
+                if corr_group_index is not None:
+                    other_attributes = correlated_attributes[corr_group_index].tolist().copy()
                     other_attributes.remove(attr_name)
                     bt = balltree[attr_name]
                 else:
@@ -295,6 +342,7 @@ class NCorrFP():
             label_encoders[cat] = label_enc
 
         start = time.time()
+        correlated_attributes = parse_correlated_attrs(correlated_attributes, relation_fp.dataframe)
         balltree = init_balltrees(correlated_attributes, relation_fp.dataframe.drop('Id', axis=1))
 
         count = [[0, 0] for x in range(self.fingerprint_bit_length)]
@@ -315,8 +363,9 @@ class NCorrFP():
                 # mask
                 mask_bit = random.randint(0, _MAXINT) % 2
 
-                if attr_name in correlated_attributes:
-                    other_attributes = correlated_attributes.copy()
+                corr_group_index = next((i for i, sublist in enumerate(correlated_attributes) if attr_name in sublist), None)
+                if corr_group_index is not None:  # if attr_name is in correlated attributes
+                    other_attributes = correlated_attributes[corr_group_index].tolist().copy()
                     other_attributes.remove(attr_name)
                     bt = balltree[attr_name]
                 else:

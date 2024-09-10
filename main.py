@@ -100,5 +100,20 @@ def test_demo():
     return d_iter_log
 
 
+def knn_multi_corr():
+    # code to replicate fingerprint embedding with NCorrFP scheme
+    from NCorrFP_scheme.NCorrFP import NCorrFP
+    scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
+    fingerprinted_data = scheme.insertion('breast-cancer', primary_key='Id', secret_key=100, recipient_id=4,
+                                          outfile='NCorrFP_scheme/outfiles/fp_data_multicorr_100.csv',
+                                          correlated_attributes=[['age', 'menopause'], ['inv-nodes', 'node-caps']])
+
+    suspect = scheme.detection(fingerprinted_data, secret_key=100, primary_key='Id',
+                               correlated_attributes=[['age', 'menopause'], ['inv-nodes', 'node-caps']],
+                               original_columns=["age", "menopause", "tumor-size", "inv-nodes", "node-caps",
+                                                 "deg-malig", "breast", "breast-quad",
+                                                 "irradiat", "recurrence"])
+
+
 if __name__ == '__main__':
-    test_knn()
+    knn_multi_corr()
