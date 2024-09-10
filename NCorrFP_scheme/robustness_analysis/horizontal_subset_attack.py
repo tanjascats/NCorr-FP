@@ -7,7 +7,7 @@ from datetime import datetime
 import numpy as np
 
 from attacks.horizontal_subset_attack import HorizontalSubsetAttack
-from NCorrFP_scheme.NCorrFP_scheme import NCorrFP
+from NCorrFP_scheme.NCorrFP import NCorrFP
 
 # results in results/horizontal
 

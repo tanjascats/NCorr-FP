@@ -1,5 +1,5 @@
 import attacks.bit_flipping_attack
-from NCorrFP_scheme.NCorrFP_scheme import NCorrFP
+from NCorrFP_scheme.NCorrFP import NCorrFP
 
 
 def test_knn():

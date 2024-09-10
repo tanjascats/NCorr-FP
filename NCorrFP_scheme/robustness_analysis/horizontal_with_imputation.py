@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from attacks.horizontal_subset_attack import HorizontalSubsetAttack
-from NCorrFP_scheme.NBNN_scheme import CategoricalNeighbourhood
+from NCorrFP_scheme.NBNN import CategoricalNeighbourhood
 
 from sklearn import preprocessing
 

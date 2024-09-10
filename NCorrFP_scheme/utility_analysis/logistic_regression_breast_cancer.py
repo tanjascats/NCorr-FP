@@ -1,6 +1,6 @@
 from sklearn.model_selection import RandomizedSearchCV
 from utils import *
-from NCorrFP_scheme.NBNN_scheme import CategoricalNeighbourhood
+from NCorrFP_scheme.NBNN import CategoricalNeighbourhood
 import numpy as np
 from time import time
 from sklearn.model_selection import cross_val_score

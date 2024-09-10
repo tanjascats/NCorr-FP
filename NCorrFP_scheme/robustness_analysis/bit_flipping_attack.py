@@ -11,7 +11,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from attacks.bit_flipping_attack import BitFlippingAttack
-from NCorrFP_scheme.NCorrFP_scheme import NCorrFP
+from NCorrFP_scheme.NCorrFP import NCorrFP
 
 
 def run(config_file=None):
