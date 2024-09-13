@@ -133,3 +133,23 @@ class TestNCorrFP(unittest.TestCase):
 
         balltree = init_balltrees(correlated_attributes, original)
         print(balltree)
+
+    def test_mark_continuous_value_mark1(self):
+        neighbours = [16,  9, 11, 12,  1,  1,  2,  4,  7, 11,
+                      18,  7,  3,  7, 14,  0, 14, 12,  3, 14,
+                      3,  7, 18,  0,  0,  9,  0, 19,  7,  7,
+                      4, 5, 5, 18, 15]   # Generating some example data
+        mark_bit = 1
+        marked_attribute = mark_continuous_value(neighbours, mark_bit=mark_bit, plot=True)
+        print(marked_attribute)
+        self.assertTrue(marked_attribute in [3, 4, 5, 7])
+
+    def test_mark_continuous_value_mark0(self):
+        neighbours = [16, 9, 11, 12, 1, 1, 2, 4, 7, 11,
+                      18, 7, 3, 7, 14, 0, 14, 12, 3, 14,
+                      3, 7, 18, 0, 0, 9, 0, 19, 7, 7,
+                      4, 5, 5, 18, 15]  # Generating some example data
+        mark_bit = 0
+        marked_attribute = mark_continuous_value(neighbours, mark_bit=mark_bit, plot=True)
+        print(marked_attribute)
+        self.assertTrue(marked_attribute in [0, 1, 2, 9, 11, 12, 14, 15, 16, 18, 19])

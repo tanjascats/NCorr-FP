@@ -1,5 +1,6 @@
 import numpy.random as random
 import pandas as pd
+import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
 from sklearn.preprocessing import LabelEncoder
 from sklearn.neighbors import BallTree
@@ -90,14 +91,16 @@ def parse_correlated_attrs(correlated_attributes, relation):
     return correlated_attributes
 
 
-def sample_from_dense_areas(data, exclude_percent=0.1, num_samples=1):
+def sample_from_area(data, percent=0.1, num_samples=1, dense=True, plot=False):
     """
     Samples from the most dense areas of distribution, excluding a specified percentile.
     The distribution is estimated using Gaussian Kernel Density Estimation method
     Args:
         data: data points
-        exclude_percent: bottom percentile to exclude from sampling
+        percent: bottom percentile to exclude from dense sampling, or include in low-density sampling
         num_samples: number of sampled values
+        dense: whether to sample from most dense areas, or low density areas (distribution tails)
+        plot: True/False; whether to plot the density distributions
 
     Returns: a list of sampled values
 
@@ -110,10 +113,13 @@ def sample_from_dense_areas(data, exclude_percent=0.1, num_samples=1):
     pdf_values = kde(x)
 
     # Identify the threshold to exclude a percentage of the densest areas
-    threshold = np.percentile(pdf_values, exclude_percent*100)
+    threshold = np.percentile(pdf_values, percent*100)
 
     # Mask the CDF to only include values within the percentile range
-    mask = (pdf_values >= threshold)
+    if dense:
+        mask = (pdf_values >= threshold)
+    else:
+        mask = (pdf_values < threshold)
 
     # Re-normalize the masked PDF and CDF
     masked_pdf = np.where(mask, pdf_values, 0)
@@ -126,22 +132,36 @@ def sample_from_dense_areas(data, exclude_percent=0.1, num_samples=1):
     print(sampled_values)
 
     # Plot the PDF, masked PDF, and the sampled values
-    # plt.plot(x, pdf_values, label='Original PDF')
-    # plt.plot(x, masked_pdf, label='Modified PDF ({}th percentile)'.format(int(100*exclude_percent)))
-    # plt.scatter(sampled_values, [0] * num_samples, color='red', label='Sampled Values', zorder=5)
-    # plt.title('Sampling from Dense Areas')
-    # plt.xlabel('Values')
-    # plt.ylabel('Density')
-    # plt.legend()
-    # plt.show()
+    if plot:
+        plt.plot(x, pdf_values, label='Original PDF')
+        plt.plot(x, masked_pdf, label='Modified PDF ({}th percentile)'.format(int(100*percent)))
+        plt.scatter(sampled_values, [0] * num_samples, color='red', label='Sampled Values', zorder=5)
+        plt.hist(data, bins=10, density=True, alpha=0.3, label='Neighbourhood data points')
+        if dense:
+            plt.title('Sampling from high density areas (mark bit = 1)')
+        else:
+            plt.title('Sampling from low density areas (mark bit = 0)')
+        plt.xlabel('Values')
+        plt.ylabel('Density')
+        plt.legend()
+        plt.show()
 
     return sampled_values
 
 
-def mark_categorical_value(relation, neighbours, attr_name, mark_bit):
-    possible_values = []
-    for neighb in neighbours:
-        possible_values.append(relation.at[neighb, attr_name])
+def mark_categorical_value(neighbours, mark_bit):
+    """
+    Marks a categorical value based on the frequencies in the neighbourhood and the mark bit.
+    If mark bit is 1, the new value will be the most frequent one in the neighbourhood, otherwise sampling from
+    remaining values is performed weighted by their frequency in the neighbourhood.
+    Args:
+        neighbours: a list of values
+        mark_bit: 0 or 1
+
+    Returns: categorical value
+
+    """
+    possible_values = neighbours
     frequencies = dict()
     if len(possible_values) != 0:
         for value in set(possible_values):
@@ -158,6 +178,29 @@ def mark_categorical_value(relation, neighbours, attr_name, mark_bit):
             marked_attribute = list(frequencies.keys())[0]
     else:
         marked_attribute = None
+    return marked_attribute
+
+
+def mark_continuous_value(neighbours, mark_bit, percentile=0.75, round_to_existing=True, plot=False):
+    """
+    Marks a continuous value based on the neighbourhood of its record in the dataset and the mark bit.
+    Provided the neighbourhood values, the distribution of continuous variable is estimated using Gaussian Kernel
+    Density Estimation. From the obtained distribution, the new value is sampled based on the mark bit. If the mark bit
+    is 1, the value is sampled from a specified percentile, otherwise below.
+    Args:
+        neighbours: a list of values
+        mark_bit: integer 0 or 1
+        percentile: percentile for sampling from distribution; float (0, 1.0)
+        round_to_existing: True/False; whether to round the sampled value to the closest value from the neighbourhood
+        plot: True/False; whether to plot the resulting sampling
+    Returns: new continuous value
+    """
+    sampling_from_dense = True if mark_bit == 1 else False
+    marked_attribute = sample_from_area(data=neighbours, percent=percentile, dense=sampling_from_dense, plot=plot)
+
+    if round_to_existing:  # we are choosing the closest existing value from the neighbourhood
+        marked_attribute = min(neighbours, key=lambda x: abs(x - marked_attribute))
+
     return marked_attribute
 
 
@@ -326,12 +369,12 @@ class NCorrFP():
                 dist = dist[0].tolist()
                 dist.remove(dist[0])
 
-                # check the frequencies of the values
+                neighbourhood = relation.iloc[neighbours][attr_name].tolist()
                 if attr_name in categorical_attributes:
-                    marked_attribute = mark_categorical_value(relation, neighbours, attr_name, mark_bit)
+                    marked_attribute = mark_categorical_value(neighbourhood, mark_bit)
                 else:
-                    # todo: create a function for marking continuos
-                    marked_attribute = mark_categorical_value(relation, neighbours, attr_name, mark_bit)
+                    # todo: create a function for marking continuous
+                    marked_attribute = mark_categorical_value(neighbours, mark_bit)
 
                 fingerprinted_relation.at[r[0], r[1].keys()[attr_idx]] = marked_attribute
 
