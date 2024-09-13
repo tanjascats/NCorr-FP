@@ -1,5 +1,8 @@
 import attacks.bit_flipping_attack
 from NCorrFP_scheme.NCorrFP import NCorrFP
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import gaussian_kde, norm
 
 
 def test_knn():
@@ -115,5 +118,125 @@ def knn_multi_corr():
                                                  "irradiat", "recurrence"])
 
 
+def estimate_distribution(data):
+    # Create a kernel density estimate (KDE)
+    kde = gaussian_kde(data)
+
+    # Create a range of values from min to max of data
+    x = np.linspace(min(data), max(data), 1000)
+
+    # Evaluate KDE on the range of values
+    kde_values = kde(x)
+
+    # Plot the KDE result
+    plt.plot(x, kde_values, label='KDE')
+    plt.title('Kernel Density Estimate of the Data Distribution')
+    plt.xlabel('Values')
+    plt.ylabel('Density')
+
+    plt.hist(data, bins=10, density=True)
+    plt.show()
+
+    # Return the KDE function and the x values for further use if needed
+    return kde, x
+
+
+def plot_pdf_from_data(data):
+    # Fit a normal distribution to the data: Get the mean and standard deviation
+    mean, std_dev = np.mean(data), np.std(data)
+
+    # Create a range of x values (e.g., from min(data) to max(data))
+    x = np.linspace(min(data), max(data), 1000)
+
+    # Calculate the PDF values for this range using the normal distribution
+    pdf_values = norm.pdf(x, mean, std_dev)
+
+    # Plot the histogram of the data and the fitted PDF
+    plt.hist(data, bins=10, density=True, alpha=0.6, color='g', label='Data Histogram')
+    plt.plot(x, pdf_values, label=f'Fitted Normal PDF\n(mean={mean:.2f}, std={std_dev:.2f})', color='blue')
+    plt.title('Fitted Normal Distribution and PDF')
+    plt.xlabel('Value')
+    plt.ylabel('Density')
+    plt.legend()
+    plt.show()
+
+
+def sample_with_threshold(data, percentage_to_exclude, num_samples=1):
+    # Step 1: Create a KDE based on the data
+    kde = gaussian_kde(data)
+
+    # Step 2: Create a range of values over which to evaluate the KDE
+    x = np.linspace(min(data), max(data), 1000)
+
+    # Step 3: Evaluate the PDF and CDF
+    pdf_values = kde(x)
+    cdf_values = np.cumsum(pdf_values) / np.sum(pdf_values)  # Normalize CDF
+
+    # Plot the PDF for visualization
+    plt.plot(x, pdf_values, label='KDE')
+    plt.title('PDF with dense areas')
+    plt.xlabel('Values')
+    plt.ylabel('Density')
+
+    # Step 4: Exclude a certain percentage of the most dense areas
+    threshold = np.percentile(cdf_values, 100 - percentage_to_exclude)
+    valid_indices = np.where(cdf_values > threshold)[0]
+    x_valid = x[valid_indices]
+
+    # Step 5: Sample from the less dense areas
+    sampled_indices = np.random.choice(valid_indices, size=num_samples)
+    new_samples = x[sampled_indices]
+    plt.hist(data, bins=10, density=True, alpha=0.6, label='Data')
+    plt.hist(new_samples, bins=10, density=True, alpha=0.6, label='Sampled values')
+    plt.legend()
+    plt.show()
+
+    return new_samples
+
+
+def sample_from_dense_areas(data, exclude_percent=0.1, num_samples=1):
+    # Create a KDE based on the data (PDF estimation)
+    kde = gaussian_kde(data)
+
+    # Create a range of values to evaluate the PDF
+    x = np.linspace(min(data), max(data), 1000)
+    pdf_values = kde(x)
+
+    # Identify the threshold to exclude a percentage of the densest areas
+    threshold = np.percentile(pdf_values, exclude_percent*100)
+
+    # Mask the CDF to only include values within the percentile range
+    mask = (pdf_values >= threshold)
+
+    # Re-normalize the masked PDF and CDF
+    masked_pdf = np.where(mask, pdf_values, 0)
+    masked_cdf = np.cumsum(masked_pdf)
+    masked_cdf /= masked_cdf[-1]
+
+    # Inverse transform sampling from the adjusted CDF
+    random_values = np.random.rand(num_samples)
+    sampled_values = np.interp(random_values, masked_cdf, x)
+    print(sampled_values)
+
+    # Plot the PDF, masked PDF, and the sampled values
+    plt.plot(x, pdf_values, label='Original PDF')
+    plt.plot(x, masked_pdf, label='Modified PDF ({}th percentile)'.format(int(100*exclude_percent)))
+    plt.scatter(sampled_values, [0] * num_samples, color='red', label='Sampled Values', zorder=5)
+    plt.title('Sampling from Dense Areas')
+    plt.xlabel('Values')
+    plt.ylabel('Density')
+    plt.legend()
+    plt.show()
+
+    return sampled_values
+
+
 if __name__ == '__main__':
-    knn_multi_corr()
+    data = np.random.randint(0, 1000, 100)  # Generating some example data
+    #kde_function, x_values = estimate_distribution(data)
+    #plot_pdf_from_data(data)
+    #data = np.random.normal(loc=0, scale=1, size=1000)  # Example data from a normal distribution
+
+    # Exclude the top 10% most dense areas and sample new values
+    new_values = sample_from_dense_areas(data, exclude_percent=0.1, num_samples=20)
+    print("New sampled values (from less dense areas):", new_values)

@@ -1,5 +1,6 @@
 import numpy.random as random
 import pandas as pd
+from scipy.stats import gaussian_kde
 from sklearn.preprocessing import LabelEncoder
 from sklearn.neighbors import BallTree
 from bitstring import BitArray
@@ -89,8 +90,79 @@ def parse_correlated_attrs(correlated_attributes, relation):
     return correlated_attributes
 
 
+def sample_from_dense_areas(data, exclude_percent=0.1, num_samples=1):
+    """
+    Samples from the most dense areas of distribution, excluding a specified percentile.
+    The distribution is estimated using Gaussian Kernel Density Estimation method
+    Args:
+        data: data points
+        exclude_percent: bottom percentile to exclude from sampling
+        num_samples: number of sampled values
+
+    Returns: a list of sampled values
+
+    """
+    # Create a KDE based on the data (PDF estimation)
+    kde = gaussian_kde(data)
+
+    # Create a range of values to evaluate the PDF
+    x = np.linspace(min(data), max(data), 1000)
+    pdf_values = kde(x)
+
+    # Identify the threshold to exclude a percentage of the densest areas
+    threshold = np.percentile(pdf_values, exclude_percent*100)
+
+    # Mask the CDF to only include values within the percentile range
+    mask = (pdf_values >= threshold)
+
+    # Re-normalize the masked PDF and CDF
+    masked_pdf = np.where(mask, pdf_values, 0)
+    masked_cdf = np.cumsum(masked_pdf)
+    masked_cdf /= masked_cdf[-1]
+
+    # Inverse transform sampling from the adjusted CDF
+    random_values = np.random.rand(num_samples)
+    sampled_values = np.interp(random_values, masked_cdf, x)
+    print(sampled_values)
+
+    # Plot the PDF, masked PDF, and the sampled values
+    # plt.plot(x, pdf_values, label='Original PDF')
+    # plt.plot(x, masked_pdf, label='Modified PDF ({}th percentile)'.format(int(100*exclude_percent)))
+    # plt.scatter(sampled_values, [0] * num_samples, color='red', label='Sampled Values', zorder=5)
+    # plt.title('Sampling from Dense Areas')
+    # plt.xlabel('Values')
+    # plt.ylabel('Density')
+    # plt.legend()
+    # plt.show()
+
+    return sampled_values
+
+
+def mark_categorical_value(relation, neighbours, attr_name, mark_bit):
+    possible_values = []
+    for neighb in neighbours:
+        possible_values.append(relation.at[neighb, attr_name])
+    frequencies = dict()
+    if len(possible_values) != 0:
+        for value in set(possible_values):
+            f = possible_values.count(value) / len(possible_values)
+            frequencies[value] = f
+        # sort the values by their frequency
+        frequencies = {k: v for k, v in sorted(frequencies.items(), key=lambda item: item[1], reverse=True)}
+        if mark_bit == 0 and len(frequencies.keys()) > 1:
+            # choose among less frequent values, weighted by their frequencies
+            norm_freq = list(frequencies.values())[1:] / np.sum(list(frequencies.values())[1:])
+            marked_attribute = random.choice(list(frequencies.keys())[1:], 1,
+                                             p=norm_freq)[0]
+        else:  # choose the most frequent value
+            marked_attribute = list(frequencies.keys())[0]
+    else:
+        marked_attribute = None
+    return marked_attribute
+
+
 class NCorrFP():
-    # todo: add support for looking at frequencies/distributions of continuous attributes
+    # todo: add support for looking at frequencies/distributions of continuous attributes (PDF, KDE)
     # supports the dataset size of up to 1,048,576 entries
     __primary_key_len = 20
 
@@ -153,7 +225,6 @@ class NCorrFP():
             if recipient_fp == fingerprint:
                 return recipient_id
         return -1
-
 
     def insertion(self, dataset_name, recipient_id, secret_key, primary_key=None, outfile=None,
                   correlated_attributes=None):
@@ -256,23 +327,11 @@ class NCorrFP():
                 dist.remove(dist[0])
 
                 # check the frequencies of the values
-                possible_values = []
-                for neighb in neighbours:
-                    possible_values.append(relation.at[neighb, r[1].keys()[attr_idx]])
-                frequencies = dict()
-                if len(possible_values) != 0:
-                    for value in set(possible_values):
-                        f = possible_values.count(value) / len(possible_values)
-                        frequencies[value] = f
-                    # sort the values by their frequency
-                    frequencies = {k: v for k, v in sorted(frequencies.items(), key=lambda item: item[1], reverse=True)}
-                    if mark_bit == 0 and len(frequencies.keys()) > 1:
-                        # choose among less frequent values, weighted by their frequencies
-                        norm_freq = list(frequencies.values())[1:]/np.sum(list(frequencies.values())[1:])
-                        marked_attribute = random.choice(list(frequencies.keys())[1:], 1,
-                                                         p=norm_freq)[0]
-                    else:  # choose the most frequent value
-                        marked_attribute = list(frequencies.keys())[0]
+                if attr_name in categorical_attributes:
+                    marked_attribute = mark_categorical_value(relation, neighbours, attr_name, mark_bit)
+                else:
+                    # todo: create a function for marking continuos
+                    marked_attribute = mark_categorical_value(relation, neighbours, attr_name, mark_bit)
 
                 fingerprinted_relation.at[r[0], r[1].keys()[attr_idx]] = marked_attribute
 
