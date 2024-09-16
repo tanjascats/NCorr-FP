@@ -16,12 +16,13 @@ from utils import _read_data
 _MAXINT = 2**31 - 1
 
 
-def init_balltrees(correlated_attributes, relation):
+def init_balltrees(correlated_attributes, relation, metric="hamming"):
     """
     Initialises balltrees for neighbourhood search.
     Balltrees for correlated attributes are created from the attribute's correlated attributes.
     Balltrees for other attributes are created from all other attributes.
     Args:
+        metric:
         correlated_attributes: (strictly) a list of lists (groups) of correlated attributes
         relation: the DataFrame of the dataset
 
@@ -35,9 +36,9 @@ def init_balltrees(correlated_attributes, relation):
         # get the index of a list of correlated attributes to attr; if attr is not correlated then return None
         index = next((i for i, sublist in enumerate(correlated_attributes) if attr in sublist), None)
         if index is not None:  # if attr is part of any group of correlations
-            balltree_i = BallTree(relation[correlated_attributes[index]].drop(attr, axis=1), metric="hamming")
+            balltree_i = BallTree(relation[correlated_attributes[index]].drop(attr, axis=1), metric=metric)
         else:  # if attr is not correlated to anything
-            balltree_i = BallTree(relation.drop(attr, axis=1), metric='hamming')
+            balltree_i = BallTree(relation.drop(attr, axis=1), metric=metric)
         balltree[attr] = balltree_i
     print("Training balltrees in: " + str(round(time.time() - start_training_balltrees, 2)) + " sec.")
     return balltree
@@ -210,7 +211,7 @@ class NCorrFP():
     __primary_key_len = 20
 
     def __init__(self, gamma, xi=1, fingerprint_bit_length=32, number_of_recipients=100, distance_based=False,
-                 d=0, k=10):
+                 d=0, k=10, metric="hamming"):
         self.gamma = gamma
         self.xi = xi
         self.fingerprint_bit_length = fingerprint_bit_length
@@ -223,6 +224,7 @@ class NCorrFP():
         self._INIT_MESSAGE = "NCorrFP - initialised.\n\t(Correlation-preserving NN-based fingerprinting scheme.)\nEmbedding started...\n" \
                              "\tgamma: " + str(self.gamma) + "\n\tfingerprint length: " + \
                              str(self.fingerprint_bit_length) + "\n\tdistance based: " + str(self.distance_based)
+        self.metric = metric
         self.count = None  # the most recent fingerprint bit-wise counts
         self.detected_fp = None  # the msot recently detected fingerprint
 
@@ -269,7 +271,7 @@ class NCorrFP():
                 return recipient_id
         return -1
 
-    def insertion(self, dataset_name, recipient_id, secret_key, primary_key=None, outfile=None,
+    def insertion(self, dataset_name, recipient_id, secret_key, primary_key_name=None, outfile=None,
                   correlated_attributes=None):
         """
         Embeds a fingerprint into the data using NCorrFP algorithm.
@@ -277,7 +279,7 @@ class NCorrFP():
             dataset_name: string name of the predefined test dataset
             recipient_id: unique identifier of the recipient
             secret_key: owner's secret key
-            primary_key: optional - name of the primary key attribute. If not specified, index is used
+            primary_key_name: optional - name of the primary key attribute. If not specified, index is used
             outfile:  optional - name of the output file for writing fingerprinted dataset
             correlated_attributes: optional - list of names of correlated attributes. If multiple groups of correlated attributes exist, they collectivelly need to be passed as a list of lists. If not specified, all attributes will be used for neighbourhood search.
 
@@ -289,7 +291,7 @@ class NCorrFP():
         if secret_key is not None:
             self.secret_key = secret_key
         # it is assumed that the first column in the dataset is the primary key
-        relation, primary_key = import_dataset_from_file(dataset_name, primary_key)
+        relation, primary_key_name = import_dataset_from_file(dataset_name, primary_key_name)
         # number of numerical attributes minus primary key
         number_of_num_attributes = len(relation.select_dtypes(exclude='object').columns) - 1
         # number of non-numerical attributes
@@ -313,7 +315,7 @@ class NCorrFP():
 
         correlated_attributes = parse_correlated_attrs(correlated_attributes, relation)
         # ball trees from user-specified correlated attributes
-        balltree = init_balltrees(correlated_attributes, relation.drop('Id', axis=1))
+        balltree = init_balltrees(correlated_attributes, relation.drop('Id', axis=1), self.metric)
 
         fingerprinted_relation = relation.copy()
         for r in relation.iterrows():
@@ -373,8 +375,7 @@ class NCorrFP():
                 if attr_name in categorical_attributes:
                     marked_attribute = mark_categorical_value(neighbourhood, mark_bit)
                 else:
-                    # todo: create a function for marking continuous
-                    marked_attribute = mark_categorical_value(neighbours, mark_bit)
+                    marked_attribute = mark_continuous_value(neighbourhood, mark_bit)
 
                 fingerprinted_relation.at[r[0], r[1].keys()[attr_idx]] = marked_attribute
 
@@ -407,7 +408,7 @@ class NCorrFP():
             original_columns:
 
         Returns:
-            recipient_no: identification of the recipient of detected fingeprint
+            recipient_no: identification of the recipient of detected fingerprint
             detected_fp: detected fingerprint bitstring
             count: array of bit-wise fingerprint votes
 
@@ -445,7 +446,7 @@ class NCorrFP():
 
         start = time.time()
         correlated_attributes = parse_correlated_attrs(correlated_attributes, relation_fp.dataframe)
-        balltree = init_balltrees(correlated_attributes, relation_fp.dataframe.drop('Id', axis=1))
+        balltree = init_balltrees(correlated_attributes, relation_fp.dataframe.drop('Id', axis=1), self.metric)
 
         count = [[0, 0] for x in range(self.fingerprint_bit_length)]
 
@@ -570,22 +571,9 @@ class NCorrFP():
             relation[cat] = label_enc.fit_transform(relation[cat])
             label_encoders[cat] = label_enc
 
+        correlated_attributes = parse_correlated_attrs(correlated_attributes, relation)
         # ball trees from user-specified correlated attributes
-        if correlated_attributes is None:
-            correlated_attributes = relation.columns[:]  # everything is correlated if not otherwise specified
-        else:
-            correlated_attributes = pd.Index(correlated_attributes)
-
-        start_training_balltrees = time.time()
-        # ball trees from all-except-one attribute and all attributes
-        balltree = dict()
-        for i in range(len(correlated_attributes)):
-            balltree_i = BallTree(relation[correlated_attributes[:i].append(correlated_attributes[(i + 1):])],
-                                  metric="hamming")
-            balltree[correlated_attributes[i]] = balltree_i
-        balltree_all = BallTree(relation[correlated_attributes], metric="hamming")
-        balltree["all"] = balltree_all
-        print("Training balltrees in: " + str(round(time.time() - start_training_balltrees, 2)) + " sec.")
+        balltree = init_balltrees(correlated_attributes, relation.drop('Id', axis=1), self.metric)
 
         fingerprinted_relation = relation.copy()
         iter_log = []
@@ -599,7 +587,7 @@ class NCorrFP():
             if random.randint(0, _MAXINT) % self.gamma == 0:
                 iteration = {'row_index': r[1][0]}
                 # selecting the attribute
-                attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1 # +1 to skip the prim key
+                attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # +1 to skip the prim key
                 attr_name = r[1].index[attr_idx]
                 attribute_val = r[1][attr_idx]
                 iteration['attribute'] = attr_name
@@ -609,6 +597,7 @@ class NCorrFP():
                 fingerprint_bit = fingerprint[fingerprint_idx]
                 # select mask and calculate the mark bit
                 mask_bit = random.randint(0, _MAXINT) % 2
+                iteration['mask_bit'] = mask_bit
                 mark_bit = (mask_bit + fingerprint_bit) % 2
                 iteration['mark_bit'] = mark_bit
 
@@ -617,27 +606,31 @@ class NCorrFP():
                 # # # otherwise the second most frequent
 
                 # selecting attributes for knn search -> this is user specified
-                if attr_name in correlated_attributes:
-                    other_attributes = correlated_attributes.tolist().copy()
+                # get the index of a group of correlated attributes to attr; if attr is not correlated then return None
+                corr_group_index = next((i for i, sublist in enumerate(correlated_attributes) if attr_name in sublist),
+                                        None)
+                # if attr_name in correlated_attributes:
+                if corr_group_index is not None:
+                    other_attributes = correlated_attributes[corr_group_index].tolist().copy()
                     other_attributes.remove(attr_name)
                     bt = balltree[attr_name]
                 else:
-                    other_attributes = correlated_attributes.tolist().copy()
-                    bt = balltree["all"]
+                    other_attributes = r[1].index.tolist().copy()
+                    other_attributes.remove(attr_name)
+                    other_attributes.remove('Id')
+                    bt = balltree[attr_name]
                 if self.distance_based:
                     neighbours, dist = bt.query_radius([relation[other_attributes].loc[r[0]]], r=self.d,
                                                        return_distance=True, sort_results=True)
+
                 else:
                     # nondeterminism - non chosen tuples with max distance
                     dist, neighbours = bt.query([relation[other_attributes].loc[r[0]]], k=self.k + 1)
-                # for demo:
-                # print("Neighbors: " + str(neighbours) + " at distance " + str(dist))
                     dist = dist[0].tolist()
                     dist.remove(dist[0])
-                    # resolve the non-determinism take all the tuples with max distance
                     neighbours, dist = bt.query_radius(
                         [relation[other_attributes].loc[r[0]]], r=max(dist), return_distance=True,
-                        sort_results=True)
+                        sort_results=True)  # the list of neighbours is first (and only) element of the returned list
                     neighbours = neighbours[0].tolist()
                     neighbours.remove(neighbours[0])
                 dist = dist[0].tolist()
@@ -645,33 +638,21 @@ class NCorrFP():
                 iteration['neighbors'] = neighbours
                 iteration['dist'] = dist
 
-                # check the frequencies of the values
-                possible_values = []
-                for neighb in neighbours:
-                    possible_values.append(relation.at[neighb, r[1].keys()[attr_idx]])
-                frequencies = dict()
-                if len(possible_values) != 0:
-                    for value in set(possible_values):
-                        f = possible_values.count(value) / len(possible_values)
-                        frequencies[value] = f
-                    # sort the values by their frequency
-                    frequencies = {k: v for k, v in sorted(frequencies.items(), key=lambda item: item[1], reverse=True)}
-                    if mark_bit == 0 and len(frequencies.keys()) > 1:
-                        # choose among less frequent values, weighted by their frequencies
-                        norm_freq = list(frequencies.values())[1:] / np.sum(list(frequencies.values())[1:])
-                        marked_attribute = random.choice(list(frequencies.keys())[1:], 1,
-                                                         p=norm_freq)[0]
-                    else:  # choose the most frequent value
-                        marked_attribute = list(frequencies.keys())[0]
-
+                neighbourhood = relation.iloc[neighbours][attr_name].tolist()
                 if attr_name in categorical_attributes:
-                    iteration['frequencies'] = dict()
-                    for (k, val) in frequencies.items():
-                        decoded_k = label_encoders[attr_name].inverse_transform([k])
-                        iteration['frequencies'][decoded_k[0]] = val
+                    marked_attribute = mark_categorical_value(neighbourhood, mark_bit)
                 else:
-                    iteration['frequencies'] = frequencies
-                iteration['new_value'] = marked_attribute
+                    # todo: create a function for marking continuous
+                    marked_attribute = mark_continuous_value(neighbours, mark_bit)
+
+#                if attr_name in categorical_attributes:
+#                    iteration['frequencies'] = dict()
+#                    for (k, val) in frequencies.items():
+#                        decoded_k = label_encoders[attr_name].inverse_transform([k])
+#                        iteration['frequencies'][decoded_k[0]] = val
+#                else:
+#                    iteration['frequencies'] = frequencies
+#                iteration['new_value'] = marked_attribute
                 # print("Index " + str(r[0]) + ", attribute " + str(r[1].keys()[attr_idx]) + ", from " +
                 #      str(attribute_val) + " to " + str(marked_attribute))
                 fingerprinted_relation.at[r[0], r[1].keys()[attr_idx]] = marked_attribute
@@ -741,9 +722,9 @@ class NCorrFP():
         balltree = dict()
         for i in range(len(correlated_attributes)):
             balltree_i = BallTree(relation_fp.dataframe[correlated_attributes[:i].append(correlated_attributes[(i + 1):])],
-                                  metric="hamming")
+                                  metric=self.metric)
             balltree[correlated_attributes[i]] = balltree_i
-        balltree_all = BallTree(relation_fp.dataframe[correlated_attributes], metric="hamming")
+        balltree_all = BallTree(relation_fp.dataframe[correlated_attributes], metric=self.metric)
         balltree["all"] = balltree_all
 
         count = [[0, 0] for x in range(self.fingerprint_bit_length)]

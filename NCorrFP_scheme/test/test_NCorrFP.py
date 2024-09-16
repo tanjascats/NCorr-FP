@@ -10,7 +10,7 @@ class TestNCorrFP(unittest.TestCase):
         scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
         original = pd.read_csv("datasets/breast_cancer_full.csv")
         correlated_attributes = ['inv-nodes', 'node-caps']
-        fingerprinted_data = scheme.insertion('breast-cancer', primary_key='Id', secret_key=101, recipient_id=4,
+        fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=101, recipient_id=4,
                                               correlated_attributes=correlated_attributes)
         values1_fp = fingerprinted_data['inv-nodes'].unique()
         values2_fp = fingerprinted_data['node-caps'].unique()
@@ -27,7 +27,7 @@ class TestNCorrFP(unittest.TestCase):
     def test_detection_single_correlation(self):
         scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
         correlated_attributes = ['inv-nodes', 'node-caps']
-        fingerprinted_data = scheme.insertion('breast-cancer', primary_key='Id', secret_key=101, recipient_id=4,
+        fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=101, recipient_id=4,
                                               correlated_attributes=correlated_attributes)
         suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
                                    correlated_attributes=['inv-nodes', 'node-caps'],
@@ -40,7 +40,7 @@ class TestNCorrFP(unittest.TestCase):
         scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
         original = pd.read_csv("datasets/breast_cancer_full.csv")
         correlated_attributes = [['inv-nodes', 'node-caps'], ['age', 'menopause']]
-        fingerprinted_data = scheme.insertion('breast-cancer', primary_key='Id', secret_key=101, recipient_id=4,
+        fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=101, recipient_id=4,
                                               correlated_attributes=correlated_attributes)
         values1_fp = fingerprinted_data['inv-nodes'].unique()
         values2_fp = fingerprinted_data['node-caps'].unique()
@@ -67,7 +67,7 @@ class TestNCorrFP(unittest.TestCase):
     def test_detection_multi_correlation(self):
         scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
         correlated_attributes = [['age', 'menopause'],['inv-nodes', 'node-caps']]
-        fingerprinted_data = scheme.insertion('breast-cancer', primary_key='Id', secret_key=101, recipient_id=4,
+        fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=101, recipient_id=4,
                                               correlated_attributes=correlated_attributes)
         suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
                                    correlated_attributes=correlated_attributes,
@@ -153,3 +153,17 @@ class TestNCorrFP(unittest.TestCase):
         marked_attribute = mark_continuous_value(neighbours, mark_bit=mark_bit, plot=True)
         print(marked_attribute)
         self.assertTrue(marked_attribute in [0, 1, 2, 9, 11, 12, 14, 15, 16, 18, 19])
+
+    def test_insertion_continuous(self):
+        scheme = NCorrFP(gamma=3, fingerprint_bit_length=16, metric='minkowski', k=10)
+        original_path = "NCorrFP_scheme/test/test_data/synthetic_300_continuous.csv"
+        original = pd.read_csv(original_path)
+        correlated_attributes = ['X', 'Y']
+        correlation_original = original['X'].corr(original['Y'])
+        fingerprinted_data = scheme.insertion(original_path, primary_key_name='Id', secret_key=101, recipient_id=4,
+                                              correlated_attributes=correlated_attributes)
+        fingerprinted_data.to_csv('temp_out.csv', index=False)
+        correlation_fingerprinted = fingerprinted_data['X'].corr(fingerprinted_data['Y'])
+        delta = 0.02
+        message = 'Original and fingerprinted correlations are almost equal within {}'.format(delta)
+        self.assertAlmostEqual(correlation_fingerprinted, correlation_original, None, message, delta)
