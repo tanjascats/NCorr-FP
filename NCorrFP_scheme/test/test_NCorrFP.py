@@ -116,7 +116,8 @@ class TestNCorrFP(unittest.TestCase):
             original[cat] = label_enc.fit_transform(original[cat])
             label_encoders[cat] = label_enc
 
-        balltree = init_balltrees(correlated_attributes, original)
+        balltree = init_balltrees(correlated_attributes, original,
+                                  categorical_attributes=categorical_attributes)
         print(balltree)
 
     def test_init_balltrees_multi_corr(self):
@@ -131,7 +132,7 @@ class TestNCorrFP(unittest.TestCase):
             original[cat] = label_enc.fit_transform(original[cat])
             label_encoders[cat] = label_enc
 
-        balltree = init_balltrees(correlated_attributes, original)
+        balltree = init_balltrees(correlated_attributes, original, categorical_attributes=categorical_attributes)
         print(balltree)
 
     def test_mark_continuous_value_mark1(self):
@@ -155,7 +156,8 @@ class TestNCorrFP(unittest.TestCase):
         self.assertTrue(marked_attribute in [0, 1, 2, 9, 11, 12, 14, 15, 16, 18, 19])
 
     def test_insertion_continuous(self):
-        scheme = NCorrFP(gamma=3, fingerprint_bit_length=16, metric='minkowski', k=10)
+        scheme = NCorrFP(gamma=3, fingerprint_bit_length=16,
+                         distance_metric_continuous='minkowski', k=10)
         original_path = "NCorrFP_scheme/test/test_data/synthetic_300_continuous.csv"
         original = pd.read_csv(original_path)
         correlated_attributes = ['X', 'Y']
@@ -167,9 +169,23 @@ class TestNCorrFP(unittest.TestCase):
         message = 'Original and fingerprinted correlations are almost equal within {}'.format(delta)
         self.assertAlmostEqual(correlation_fingerprinted, correlation_original, None, message, delta)
 
+    def test_insertion_continuous_3_correlated(self):
+        scheme = NCorrFP(gamma=3, fingerprint_bit_length=16,
+                         distance_metric_continuous='minkowski', k=10)
+        original_path = "NCorrFP_scheme/test/test_data/synthetic_300_3_continuous.csv"
+        original = pd.read_csv(original_path)
+        correlated_attributes = ['X', 'Y', 'Z']
+        correlation_original = original['Y'].corr(original['Z'])
+        fingerprinted_data = scheme.insertion(original_path, primary_key_name='Id', secret_key=101, recipient_id=4,
+                                              correlated_attributes=correlated_attributes)
+        correlation_fingerprinted = fingerprinted_data['Y'].corr(fingerprinted_data['Z'])
+        delta = 0.03
+        message = 'Original and fingerprinted correlations are almost equal within {}'.format(delta)
+        self.assertAlmostEqual(correlation_fingerprinted, correlation_original, None, message, delta)
+
     def test_detection_continuous(self):
-        scheme = NCorrFP(gamma=3, fingerprint_bit_length=16, metric='minkowski', k=10)
-        original_path = "NCorrFP_scheme/test/test_data/synthetic_300_continuous.csv"
+        scheme = NCorrFP(gamma=1, fingerprint_bit_length=8, k=10)
+        original_path = "NCorrFP_scheme/test/test_data/synthetic_40_3_continuous.csv"
         original = pd.read_csv(original_path)
         correlated_attributes = ['X', 'Y']
         correlation_original = original['X'].corr(original['Y'])
@@ -177,12 +193,12 @@ class TestNCorrFP(unittest.TestCase):
                                               correlated_attributes=correlated_attributes)
         suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
                                    correlated_attributes=correlated_attributes,
-                                   original_columns=["X", 'Y'])
+                                   original_columns=["X", 'Y', 'Z'])
         self.assertIs(suspect, 4, msg="SUCCESS. The detected recipient is correct.")
 
     def test_categorical_minkowski(self):
         distance_metric = 'minkowski'
-        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, metric=distance_metric)
+        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, distance_metric_discrete=distance_metric)
         original = pd.read_csv("datasets/breast_cancer_full.csv")
         correlated_attributes = ['inv-nodes', 'node-caps']
         fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=101, recipient_id=4,

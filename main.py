@@ -3,6 +3,8 @@ from NCorrFP_scheme.NCorrFP import NCorrFP
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde, norm
+import gower
+import pandas as pd
 
 
 def test_knn():
@@ -231,12 +233,29 @@ def sample_from_dense_areas(data, exclude_percent=0.1, num_samples=1):
     return sampled_values
 
 
+def test_gower_distance():
+    # Example DataFrame with both categorical and continuous columns
+    data = pd.DataFrame({
+        'Age': [25, 30],
+        'Height': [170, 180],
+        'Gender': ['Male', 'Female'],
+    #    'Color': ['Red', 'Red']
+    })
+
+    # Calculate Gower distance matrix
+    gower_distance_matrix = gower.gower_matrix(data)
+    gower
+
+    print(gower_distance_matrix)
+
+
 if __name__ == '__main__':
-    data = np.random.randint(0, 1000, 100)  # Generating some example data
+    # data = np.random.randint(0, 1000, 100)  # Generating some example data
     #kde_function, x_values = estimate_distribution(data)
     #plot_pdf_from_data(data)
     #data = np.random.normal(loc=0, scale=1, size=1000)  # Example data from a normal distribution
 
     # Exclude the top 10% most dense areas and sample new values
-    new_values = sample_from_dense_areas(data, exclude_percent=0.1, num_samples=20)
-    print("New sampled values (from less dense areas):", new_values)
+    # new_values = sample_from_dense_areas(data, exclude_percent=0.1, num_samples=20)
+    # print("New sampled values (from less dense areas):", new_values)
+    test_gower_distance()
