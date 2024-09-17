@@ -184,8 +184,8 @@ class TestNCorrFP(unittest.TestCase):
         self.assertAlmostEqual(correlation_fingerprinted, correlation_original, None, message, delta)
 
     def test_detection_continuous(self):
-        scheme = NCorrFP(gamma=1, fingerprint_bit_length=8, k=10)
-        original_path = "NCorrFP_scheme/test/test_data/synthetic_40_3_continuous.csv"
+        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, k=10)
+        original_path = "NCorrFP_scheme/test/test_data/synthetic_300_3_continuous.csv"
         original = pd.read_csv(original_path)
         correlated_attributes = ['X', 'Y']
         fingerprinted_data = scheme.insertion(original_path, primary_key_name='Id', secret_key=101, recipient_id=4,

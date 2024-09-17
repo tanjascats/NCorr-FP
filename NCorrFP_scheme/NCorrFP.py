@@ -7,6 +7,7 @@ from sklearn.neighbors import BallTree
 from bitstring import BitArray
 import hashlib
 import bitstring
+import copy
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -836,8 +837,7 @@ class NCorrFP():
                 fingerprint_bit = (mark_bit + mask_bit) % 2
                 count[fingerprint_idx][fingerprint_bit] += 1
 
-                iteration['count_state'] = count  # this returns the final counts for each step ??
-#                print(iteration['count_state'])
+                iteration['count_state'] = copy.deepcopy(count)  # this returns the final counts for each step ??
                 iteration['mark_bit'] = mark_bit
                 iteration['fingerprint_bit'] = fingerprint_bit
 
