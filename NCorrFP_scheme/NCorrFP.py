@@ -169,8 +169,13 @@ def is_from_dense_area(sample, data, percent):
 
     # Identify the threshold to exclude a percentage of the densest areas
     threshold = np.percentile(pdf_values, percent * 100)
+    mask = (pdf_values >= threshold)  # mask for the dense area
+    # Dictionary so that we can query the area with the sample point
+    area = dict(zip(np.round(x, 4), mask))
+    # Round the key to the closest one to the sample
+    k = min(area.keys(), key=lambda y: abs(y - sample))
 
-    return sample >= threshold
+    return area[k]
 
 
 def mark_categorical_value(neighbours, mark_bit):
@@ -631,10 +636,9 @@ class NCorrFP():
             # seed = concat(secret_key, primary_key)
             seed = (self.secret_key << self.__primary_key_len) + r[1][0]  # first column must be primary key
             random.seed(seed)
-            iteration = {'seed': seed}
             # selecting the tuple
             if random.randint(0, _MAXINT) % self.gamma == 0:
-                iteration['row_index'] = r[1][0]
+                iteration = {'seed': seed, 'row_index': r[1][0]}
                 # selecting the attribute
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # +1 to skip the prim key
                 attr_name = r[1].index[attr_idx]
@@ -732,7 +736,7 @@ class NCorrFP():
         print("\tgamma: " + str(self.gamma) + "\n\tcorrelated attributes: " + str(correlated_attributes))
 
         relation_fp = _read_data(dataset)
-        indices = list(relation_fp.dataframe.index)
+        # indices = list(relation_fp.dataframe.index)
         # number of numerical attributes minus primary key
         number_of_num_attributes = len(relation_fp.dataframe.select_dtypes(exclude='object').columns) - 1
         number_of_cat_attributes = len(relation_fp.dataframe.select_dtypes(include='object').columns)
@@ -760,20 +764,9 @@ class NCorrFP():
             label_encoders[cat] = label_enc
 
         start = time.time()
-
-        start_balling = time.time()
-        # ball trees from all-except-one attribute and all attributes
-        if correlated_attributes is None:
-            correlated_attributes = relation_fp.columns[:]  # everything is correlated if not otherwise specified
-        else:
-            correlated_attributes = pd.Index(correlated_attributes)
-        balltree = dict()
-        for i in range(len(correlated_attributes)):
-            balltree_i = BallTree(relation_fp.dataframe[correlated_attributes[:i].append(correlated_attributes[(i + 1):])],
-                                  metric=self.metric)
-            balltree[correlated_attributes[i]] = balltree_i
-        balltree_all = BallTree(relation_fp.dataframe[correlated_attributes], metric=self.metric)
-        balltree["all"] = balltree_all
+        correlated_attributes = parse_correlated_attrs(correlated_attributes, relation_fp.dataframe)
+        balltree = init_balltrees(correlated_attributes, relation_fp.dataframe.drop('Id', axis=1),
+                                  self.dist_metric_discrete, self.dist_metric_continuous, categorical_attributes)
 
         count = [[0, 0] for x in range(self.fingerprint_bit_length)]
         iter_log = []
@@ -782,7 +775,7 @@ class NCorrFP():
             random.seed(seed)
             # this tuple was marked
             if random.randint(0, _MAXINT) % self.gamma == 0:
-                iteration = {'row_index': r[1][0]}
+                iteration = {'seed': seed, 'row_index': r[1][0]}
                 # this attribute was marked (skip the primary key)
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # add 1 to skip the primary key
                 attr_name = r[1].index[attr_idx]
@@ -790,75 +783,62 @@ class NCorrFP():
                     continue
                 iteration['attribute'] = attr_name
                 attribute_val = r[1][attr_idx]
+                iteration['attribute_val'] = attribute_val
                 # fingerprint bit
                 fingerprint_idx = random.randint(0, _MAXINT) % self.fingerprint_bit_length
                 iteration['fingerprint_idx'] = fingerprint_idx
                 # mask
                 mask_bit = random.randint(0, _MAXINT) % 2
+                iteration['mask_bit'] = mask_bit
 
-                if attr_name in correlated_attributes:
-                    other_attributes = correlated_attributes.tolist().copy()
+                corr_group_index = next((i for i, sublist in enumerate(correlated_attributes) if attr_name in sublist),
+                                        None)
+                if corr_group_index is not None:  # if attr_name is in correlated attributes
+                    other_attributes = correlated_attributes[corr_group_index].tolist().copy()
                     other_attributes.remove(attr_name)
                     bt = balltree[attr_name]
                 else:
-                    other_attributes = correlated_attributes.tolist().copy()
-                    bt = balltree["all"]
+                    other_attributes = r[1].index.tolist().copy()
+                    other_attributes.remove(attr_name)
+                    other_attributes.remove('Id')
+                    bt = balltree[attr_name]
                 if self.distance_based:
                     neighbours, dist = bt.query_radius([relation_fp[other_attributes].loc[r[1][0]]], r=self.d,
                                                        return_distance=True, sort_results=True)
                 else:
                     # nondeterminism - non chosen tuples with max distance
                     dist, neighbours = bt.query([relation_fp.dataframe[other_attributes].loc[r[1][0]]], k=self.k + 1)
-                # excluding the observed tuple - todo: dont exclude
-                # neighbours.remove(neighbours[0])
                     dist = dist[0].tolist()
                     dist.remove(dist[0])
-                    # resolve the non-determinism take all the tuples with max distance
+                    # query_radius(list of points to query, distance)
                     neighbours, dist = bt.query_radius(
-                        [relation_fp.dataframe[other_attributes].loc[r[0]]], r=max(dist), return_distance=True,
-                        sort_results=True)
+                        [relation_fp.dataframe[other_attributes].loc[r[1][0]]], r=max(dist), return_distance=True,
+                        sort_results=True)  # the list of neighbours is first (and only) element of the returned list
                     neighbours = neighbours[0].tolist()
+                    if len(neighbours) < self.k:
+                        print(bt.query([relation_fp.dataframe[other_attributes].loc[r[1][0]]], k=self.k + 1))
+                        print(bt.query_radius(
+                            [relation_fp.dataframe[other_attributes].loc[r[1][0]]], r=0, return_distance=True,
+                            sort_results=True))
                     neighbours.remove(neighbours[0])
                 dist = dist[0].tolist()
                 dist.remove(dist[0])
+
                 iteration['neighbors'] = neighbours
                 iteration['dist'] = dist
 
                 # check the frequencies of the values
-                possible_values = []
-                for neighb in neighbours:
-                    neighb = indices[neighb]  # balltree resets the index so querying by index only fails for horizontal attacks, so we have to keep track of indices like this
-                    possible_values.append(relation_fp.dataframe.at[neighb, r[1].keys()[attr_idx]])
-                frequencies = dict()
-                if len(possible_values) != 0:
-                    for value in set(possible_values):
-                        f = possible_values.count(value) / len(possible_values)
-                        frequencies[value] = f
-                    # sort the values by their frequency
-                    frequencies = {k: v for k, v in
-                                   sorted(frequencies.items(), key=lambda item: item[1], reverse=True)}
-                if attribute_val == list(frequencies.keys())[0]:
-                    mark_bit = 1
-                else:
-                    mark_bit = 0
-
-                if attr_name in categorical_attributes:
-                    iteration['frequencies'] = dict()
-                    for (k, val) in frequencies.items():
-                        decoded_k = label_encoders[attr_name].inverse_transform([k])
-                        iteration['frequencies'][decoded_k[0]] = val
-                else:
-                    iteration['frequencies'] = frequencies
-                iteration['mark_bit'] = mark_bit
+                neighbourhood = relation_fp.dataframe.iloc[neighbours][attr_name].tolist()
+                mark_bit = get_mark_bit(is_categorical=(attr_name in categorical_attributes),
+                                        attribute_val=attribute_val, neighbours=neighbourhood,
+                                        relation_fp=relation_fp, attr_name=attr_name)
 
                 fingerprint_bit = (mark_bit + mask_bit) % 2
                 count[fingerprint_idx][fingerprint_bit] += 1
-                if r[1][0] in [49, 99, 199, 299, 399, 499, 599, 699]:
-                    print(count)
-#                print(count)
+
                 iteration['count_state'] = count  # this returns the final counts for each step ??
 #                print(iteration['count_state'])
-                iteration['mask_bit'] = mask_bit
+                iteration['mark_bit'] = mark_bit
                 iteration['fingerprint_bit'] = fingerprint_bit
 
                 iter_log.append(iteration)

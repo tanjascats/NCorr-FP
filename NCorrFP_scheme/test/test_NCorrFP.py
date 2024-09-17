@@ -188,7 +188,6 @@ class TestNCorrFP(unittest.TestCase):
         original_path = "NCorrFP_scheme/test/test_data/synthetic_40_3_continuous.csv"
         original = pd.read_csv(original_path)
         correlated_attributes = ['X', 'Y']
-        correlation_original = original['X'].corr(original['Y'])
         fingerprinted_data = scheme.insertion(original_path, primary_key_name='Id', secret_key=101, recipient_id=4,
                                               correlated_attributes=correlated_attributes)
         suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
