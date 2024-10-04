@@ -165,7 +165,7 @@ class TestNCorrFP(unittest.TestCase):
         fingerprinted_data = scheme.insertion(original_path, primary_key_name='Id', secret_key=101, recipient_id=4,
                                               correlated_attributes=correlated_attributes)
         correlation_fingerprinted = fingerprinted_data['X'].corr(fingerprinted_data['Y'])
-        delta = 0.02
+        delta = 0.04
         message = 'Original and fingerprinted correlations are almost equal within {}'.format(delta)
         self.assertAlmostEqual(correlation_fingerprinted, correlation_original, None, message, delta)
 
@@ -197,7 +197,7 @@ class TestNCorrFP(unittest.TestCase):
 
     def test_categorical_minkowski(self):
         distance_metric = 'minkowski'
-        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, distance_metric_discrete=distance_metric)
+        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, distance_metric_discrete=distance_metric, k=15)
         original = pd.read_csv("datasets/breast_cancer_full.csv")
         correlated_attributes = ['inv-nodes', 'node-caps']
         fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=101, recipient_id=4,

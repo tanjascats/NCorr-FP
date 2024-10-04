@@ -93,7 +93,8 @@ def test_flipping_adult():
 def test_demo():
     scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
     data = "datasets/breast_cancer_full.csv"
-    fingerprinted_data, iter_log = scheme.demo_insertion('breast-cancer', primary_key='Id', secret_key=501, recipient_id=4,
+    fingerprinted_data, iter_log = scheme.demo_insertion('breast-cancer', primary_key_name='Id', secret_key=501,
+                                                         recipient_id=4,
                                           outfile='NCorrFP_scheme/outfiles/fp_data_blind_corr_all_attributes.csv',
                                           correlated_attributes=['age', 'menopause', 'inv-nodes', 'node-caps'])
     #
@@ -244,9 +245,19 @@ def test_gower_distance():
 
     # Calculate Gower distance matrix
     gower_distance_matrix = gower.gower_matrix(data)
-    gower
-
     print(gower_distance_matrix)
+
+
+def test_detection_continuous():
+    scheme = NCorrFP(gamma=5, fingerprint_bit_length=64, k=30)
+    original_path = "NCorrFP_scheme/test/test_data/synthetic_30000_3_continuous.csv"
+    original = pd.read_csv(original_path)
+    correlated_attributes = ['X', 'Y']
+    fingerprinted_data = scheme.insertion(original_path, primary_key_name='Id', secret_key=101, recipient_id=4,
+                                          correlated_attributes=correlated_attributes)
+    suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
+                               correlated_attributes=correlated_attributes,
+                               original_columns=["X", 'Y', 'Z'])
 
 
 if __name__ == '__main__':
@@ -258,4 +269,5 @@ if __name__ == '__main__':
     # Exclude the top 10% most dense areas and sample new values
     # new_values = sample_from_dense_areas(data, exclude_percent=0.1, num_samples=20)
     # print("New sampled values (from less dense areas):", new_values)
-    test_gower_distance()
+    #test_gower_distance()
+    test_detection_continuous()

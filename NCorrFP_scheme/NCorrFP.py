@@ -162,6 +162,7 @@ def sample_from_area(data, percent=0.1, num_samples=1, dense=True, plot=False, s
 
 def is_from_dense_area(sample, data, percent):
     # Create a KDE based on the data (PDF estimation)
+    # print(data)
     kde = gaussian_kde(data)
 
     # Create a range of values to evaluate the PDF
@@ -380,7 +381,7 @@ class NCorrFP():
         for r in relation.iterrows():
             # r[0] is an index of a row = primary key
             # seed = concat(secret_key, primary_key)
-            seed = (self.secret_key << self.__primary_key_len) + r[1][0]  # first column must be primary ke
+            seed = (self.secret_key << self.__primary_key_len) + r[1].iloc[0]  # first column must be primary ke
             random.seed(seed)
 
             # selecting the tuple
@@ -388,7 +389,7 @@ class NCorrFP():
                 # selecting the attribute
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # +1 to skip the prim key
                 attr_name = r[1].index[attr_idx]
-                attribute_val = r[1][attr_idx]
+                attribute_val = r[1].iloc[attr_idx]
 
                 # select fingerprint bit
                 fingerprint_idx = random.randint(0, _MAXINT) % self.fingerprint_bit_length
@@ -419,16 +420,13 @@ class NCorrFP():
                                                        return_distance=True, sort_results=True)
                 else:
                     # nondeterminism - non chosen tuples with max distance
-                    dist, neighbours = bt.query([relation[other_attributes].loc[r[0]]], k=self.k + 1)
+                    dist, neighbours = bt.query([relation[other_attributes].loc[r[0]]], k=self.k)
                     dist = dist[0].tolist()
-                    dist.remove(dist[0])
+                    radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
                     neighbours, dist = bt.query_radius(
-                        [relation[other_attributes].loc[r[0]]], r=max(dist), return_distance=True,
+                        [relation[other_attributes].loc[r[0]]], r=radius, return_distance=True,
                         sort_results=True)  # the list of neighbours is first (and only) element of the returned list
                     neighbours = neighbours[0].tolist()
-                    neighbours.remove(neighbours[0])
-                dist = dist[0].tolist()
-                dist.remove(dist[0])
 
                 neighbourhood = relation.iloc[neighbours][attr_name].tolist()
                 if attr_name in categorical_attributes:
@@ -511,7 +509,7 @@ class NCorrFP():
         count = [[0, 0] for x in range(self.fingerprint_bit_length)]
 
         for r in relation_fp.dataframe.iterrows():
-            seed = (self.secret_key << self.__primary_key_len) + r[1][0]  # primary key must be the first column
+            seed = (self.secret_key << self.__primary_key_len) + r[1].iloc[0]  # primary key must be the first column
             random.seed(seed)
             # this tuple was marked
             if random.randint(0, _MAXINT) % self.gamma == 0:
@@ -520,7 +518,7 @@ class NCorrFP():
                 attr_name = r[1].index[attr_idx]
                 if attr_name in attacked_columns:  # if this columns was deleted by VA, don't collect the votes
                     continue
-                attribute_val = r[1][attr_idx]
+                attribute_val = r[1].iloc[attr_idx]
                 # fingerprint bit
                 fingerprint_idx = random.randint(0, _MAXINT) % self.fingerprint_bit_length
                 # mask
@@ -537,26 +535,19 @@ class NCorrFP():
                     other_attributes.remove('Id')
                     bt = balltree[attr_name]
                 if self.distance_based:
-                    neighbours, dist = bt.query_radius([relation_fp[other_attributes].loc[r[1][0]]], r=self.d,
+                    neighbours, dist = bt.query_radius([relation_fp[other_attributes].loc[r[1].iloc[0]]], r=self.d,
                                                        return_distance=True, sort_results=True)
-                else:
-                    # nondeterminism - non chosen tuples with max distance
-                    dist, neighbours = bt.query([relation_fp.dataframe[other_attributes].loc[r[1][0]]], k=self.k + 1)
+                else:  # if it's neighbourhood-cardinality-based
+                    # find the neighborhood of cardinality k (non-deterministic)
+                    dist, neighbours = bt.query([relation_fp.dataframe[other_attributes].loc[r[1].iloc[0]]], k=self.k)
                     dist = dist[0].tolist()
-                    dist.remove(dist[0])
-                    # query_radius(list of points to query, distance)
+                    # solve nondeterminism: get all other elements of max distance in the neighbourhood
+                    radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
                     neighbours, dist = bt.query_radius(
-                        [relation_fp.dataframe[other_attributes].loc[r[1][0]]], r=max(dist), return_distance=True,
-                        sort_results=True)  # the list of neighbours is first (and only) element of the returned list
-                    neighbours = neighbours[0].tolist()
-                    if len(neighbours) < self.k:
-                        print(bt.query([relation_fp.dataframe[other_attributes].loc[r[1][0]]], k=self.k + 1))
-                        print(bt.query_radius(
-                        [relation_fp.dataframe[other_attributes].loc[r[1][0]]], r=0, return_distance=True,
-                        sort_results=True))
-                    neighbours.remove(neighbours[0])
-                dist = dist[0].tolist()
-                dist.remove(dist[0])
+                        [relation_fp.dataframe[other_attributes].loc[r[1].iloc[0]]], r=radius, return_distance=True,
+                        sort_results=True)
+                    neighbours = neighbours[0].tolist()  # the list of neighbours was first (and only) element of the returned list
+                    dist = dist[0].tolist()
 
                 # check the frequencies of the values
                 neighbourhood = relation_fp.dataframe.iloc[neighbours][attr_name].tolist()
@@ -635,11 +626,11 @@ class NCorrFP():
         for r in relation.iterrows():
             # r[0] is an index of a row = primary key
             # seed = concat(secret_key, primary_key)
-            seed = (self.secret_key << self.__primary_key_len) + r[1][0]  # first column must be primary key
+            seed = (self.secret_key << self.__primary_key_len) + r[1].iloc[0]  # first column must be primary key
             random.seed(seed)
             # selecting the tuple
             if random.randint(0, _MAXINT) % self.gamma == 0:
-                iteration = {'seed': seed, 'row_index': r[1][0]}
+                iteration = {'seed': seed, 'row_index': r[1].iloc[0]}
                 # selecting the attribute
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # +1 to skip the prim key
                 attr_name = r[1].index[attr_idx]
@@ -679,16 +670,14 @@ class NCorrFP():
 
                 else:
                     # nondeterminism - non chosen tuples with max distance
-                    dist, neighbours = bt.query([relation[other_attributes].loc[r[0]]], k=self.k + 1)
+                    dist, neighbours = bt.query([relation[other_attributes].loc[r[0]]], k=self.k)
                     dist = dist[0].tolist()
-                    dist.remove(dist[0])
+                    radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
                     neighbours, dist = bt.query_radius(
-                        [relation[other_attributes].loc[r[0]]], r=max(dist), return_distance=True,
+                        [relation[other_attributes].loc[r[0]]], r=radius, return_distance=True,
                         sort_results=True)  # the list of neighbours is first (and only) element of the returned list
                     neighbours = neighbours[0].tolist()
-                    neighbours.remove(neighbours[0])
                 dist = dist[0].tolist()
-                dist.remove(dist[0])
                 iteration['neighbors'] = neighbours
                 iteration['dist'] = dist
 
@@ -772,11 +761,11 @@ class NCorrFP():
         count = [[0, 0] for x in range(self.fingerprint_bit_length)]
         iter_log = []
         for r in relation_fp.dataframe.iterrows():
-            seed = (self.secret_key << self.__primary_key_len) + r[1][0]  # primary key must be the first column
+            seed = (self.secret_key << self.__primary_key_len) + r[1].iloc[0]  # primary key must be the first column
             random.seed(seed)
             # this tuple was marked
             if random.randint(0, _MAXINT) % self.gamma == 0:
-                iteration = {'seed': seed, 'row_index': r[1][0]}
+                iteration = {'seed': seed, 'row_index': r[1].iloc[0]}
                 # this attribute was marked (skip the primary key)
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # add 1 to skip the primary key
                 attr_name = r[1].index[attr_idx]
@@ -804,26 +793,20 @@ class NCorrFP():
                     other_attributes.remove('Id')
                     bt = balltree[attr_name]
                 if self.distance_based:
-                    neighbours, dist = bt.query_radius([relation_fp[other_attributes].loc[r[1][0]]], r=self.d,
+                    neighbours, dist = bt.query_radius([relation_fp[other_attributes].loc[r[1].iloc[0]]], r=self.d,
                                                        return_distance=True, sort_results=True)
                 else:
-                    # nondeterminism - non chosen tuples with max distance
-                    dist, neighbours = bt.query([relation_fp.dataframe[other_attributes].loc[r[1][0]]], k=self.k + 1)
+                    # find the neighborhood of cardinality k (non-deterministic)
+                    dist, neighbours = bt.query([relation_fp.dataframe[other_attributes].loc[r[1].iloc[0]]], k=self.k)
                     dist = dist[0].tolist()
-                    dist.remove(dist[0])
-                    # query_radius(list of points to query, distance)
+                    # solve nondeterminism: get all other elements of max distance in the neighbourhood
+                    radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
                     neighbours, dist = bt.query_radius(
-                        [relation_fp.dataframe[other_attributes].loc[r[1][0]]], r=max(dist), return_distance=True,
-                        sort_results=True)  # the list of neighbours is first (and only) element of the returned list
-                    neighbours = neighbours[0].tolist()
-                    if len(neighbours) < self.k:
-                        print(bt.query([relation_fp.dataframe[other_attributes].loc[r[1][0]]], k=self.k + 1))
-                        print(bt.query_radius(
-                            [relation_fp.dataframe[other_attributes].loc[r[1][0]]], r=0, return_distance=True,
-                            sort_results=True))
-                    neighbours.remove(neighbours[0])
-                dist = dist[0].tolist()
-                dist.remove(dist[0])
+                        [relation_fp.dataframe[other_attributes].loc[r[1].iloc[0]]], r=radius, return_distance=True,
+                        sort_results=True)
+                    neighbours = neighbours[
+                        0].tolist()  # the list of neighbours was first (and only) element of the returned list
+                    dist = dist[0].tolist()
 
                 iteration['neighbors'] = neighbours
                 iteration['dist'] = dist
@@ -904,7 +887,7 @@ class NCorrFP():
         # ball trees from all-except-one attribute and all attributes
 
         for r in relation_fp.dataframe.iterrows():
-            seed = (self.secret_key << self.__primary_key_len) + r[1][0]  # primary key must be the first column
+            seed = (self.secret_key << self.__primary_key_len) + r[1].iloc[0]  # primary key must be the first column
             random.seed(seed)
             # this tuple was marked
             if random.randint(0, _MAXINT) % self.gamma == 0:
