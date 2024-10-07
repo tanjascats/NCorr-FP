@@ -7,7 +7,7 @@ import bitstring
 
 
 from utils import *
-from utils import _read_data
+from utils import read_data
 
 _MAXINT = 2**31 - 1
 
@@ -233,7 +233,7 @@ class CategoricalNeighbourhood():
 
         # relation_orig, primary_key_orig = import_dataset_from_file(dataset)
         relation_orig, primary_key = import_dataset_from_file(original_data)
-        relation_fp = _read_data(dataset)
+        relation_fp = read_data(dataset)
         # number of numerical attributes minus primary key
         number_of_num_attributes = len(relation_orig.select_dtypes(exclude='object').columns) - 1
         number_of_cat_attributes = len(relation_orig.select_dtypes(include='object').columns)

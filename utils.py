@@ -126,7 +126,7 @@ def count_differences(dataset1, dataset2):
     # todo
 
 
-def _read_data(dataset, primary_key_attribute=None, target_attribute=None):
+def read_data(dataset, primary_key_attribute=None, target_attribute=None):
     '''
     Creates the instance of Dataset for given data.
     :param dataset: string, pandas dataframe or Dataset

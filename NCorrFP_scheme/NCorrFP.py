@@ -9,16 +9,14 @@ import hashlib
 import bitstring
 import copy
 import warnings
-warnings.simplefilter(action='ignore', category=FutureWarning)
 
 from utils import *
-from utils import _read_data
 
 _MAXINT = 2**31 - 1
 
 
 def init_balltrees(correlated_attributes, relation, dist_metric_discrete="hamming", dist_metric_continuous="minkowski",
-                   categorical_attributes=None):
+                   categorical_attributes=None, show_messages=True):
     """
     Initialises balltrees for neighbourhood search.
     Balltrees for correlated attributes are created from the attribute's correlated attributes.
@@ -49,7 +47,8 @@ def init_balltrees(correlated_attributes, relation, dist_metric_discrete="hammin
             metric = dist_metric_discrete
             balltree_i = BallTree(relation.drop(attr, axis=1), metric=metric)
         balltree[attr] = balltree_i
-    print("Training balltrees in: " + str(round(time.time() - start_training_balltrees, 2)) + " sec.")
+    if show_messages:
+        print("Training balltrees in: " + str(round(time.time() - start_training_balltrees, 2)) + " sec.")
     return balltree
 
 
@@ -238,12 +237,14 @@ def mark_continuous_value(neighbours, mark_bit, percentile=0.75, round_to_existi
 
 
 def get_mark_bit(is_categorical, attribute_val, neighbours, relation_fp, attr_name, percentile=0.75):
-    indices = list(relation_fp.dataframe.index)
+    if not isinstance(relation_fp, pd.DataFrame):
+        relation_fp = relation_fp.dataframe
+    indices = list(relation_fp.index)
     if is_categorical:
         possible_values = []
         for neighb in neighbours:
             neighb = indices[neighb]  # balltree resets the index so querying by index only fails for horizontal attacks, so we have to keep track of indices like this
-            possible_values.append(relation_fp.dataframe.at[neighb, attr_name])
+            possible_values.append(relation_fp.at[neighb, attr_name])
         frequencies = dict()
         if len(possible_values) != 0:
             for value in set(possible_values):
@@ -287,12 +288,15 @@ class NCorrFP():
         self.count = None  # the most recent fingerprint bit-wise counts
         self.detected_fp = None  # the msot recently detected fingerprint
 
-    def create_fingerprint(self, recipient_id, secret_key):
+    def create_fingerprint(self, recipient_id, secret_key, show_messages=True):
         """
         Creates a fingerprint for a recipient with the given ID
         :param recipient_id: identifier of a data copy recipient
         :param secret_key: owner's secret key used to fingerprint the data
         :return: fingerprint (BitArray)
+
+        Args:
+            show_messages:
         """
         if recipient_id < 0 or recipient_id >= self.number_of_recipients:
             print("Please specify valid recipient id")
@@ -304,8 +308,9 @@ class NCorrFP():
         seed = (secret_key << shift) + recipient_id
         b = hashlib.blake2b(key=seed.to_bytes(6, 'little'), digest_size=int(self.fingerprint_bit_length / 8))
         fingerprint = BitArray(hex=b.hexdigest())
-        fp_msg = "\nGenerated fingerprint for recipient " + str(recipient_id) + ": " + fingerprint.bin
-        print(fp_msg)
+        if show_messages:
+            fp_msg = "\nGenerated fingerprint for recipient " + str(recipient_id) + ": " + fingerprint.bin
+            print(fp_msg)
         return fingerprint
 
     def detect_potential_traitor(self, fingerprint, secret_key):
@@ -473,7 +478,7 @@ class NCorrFP():
         print("Start NCorr fingerprint detection algorithm ...")
         print("\tgamma: " + str(self.gamma) + "\n\tcorrelated attributes: " + str(correlated_attributes))
 
-        relation_fp = _read_data(dataset)
+        relation_fp = read_data(dataset)
         # indices = list(relation_fp.dataframe.index)
         # number of numerical attributes minus primary key
         number_of_num_attributes = len(relation_fp.dataframe.select_dtypes(exclude='object').columns) - 1
@@ -589,6 +594,12 @@ class NCorrFP():
 
     def demo_insertion(self, dataset_name, recipient_id, secret_key, primary_key_name=None, outfile=None,
                        correlated_attributes=None):
+#        warnings.warn(
+#            "This function is deprecated and will be removed in future versions. Use NCorrFP_scheme.demo.insertion "
+#            "instead",
+#            DeprecationWarning,
+#            stacklevel=2
+#        )
         print("Start the demo NCorr fingerprint insertion algorithm...")
         print("\tgamma: " + str(self.gamma) + "\n\tcorrelated attributes: " + str(correlated_attributes))
         if secret_key is not None:
@@ -722,10 +733,16 @@ class NCorrFP():
         return fingerprinted_relation, iter_log
 
     def demo_detection(self, dataset, secret_key, primary_key=None, correlated_attributes=None, original_columns=None):
+#        warnings.warn(
+#            "This function is deprecated and will be removed in future versions. Use NCorrFP_scheme.demo.detection "
+#            "instead",
+#            DeprecationWarning,
+#            stacklevel=2
+#        )
         print("Start demo NCorr fingerprint detection algorithm ...")
         print("\tgamma: " + str(self.gamma) + "\n\tcorrelated attributes: " + str(correlated_attributes))
 
-        relation_fp = _read_data(dataset)
+        relation_fp = read_data(dataset)
         # indices = list(relation_fp.dataframe.index)
         # number of numerical attributes minus primary key
         number_of_num_attributes = len(relation_fp.dataframe.select_dtypes(exclude='object').columns) - 1
@@ -873,7 +890,7 @@ class NCorrFP():
         print("Start NCorr fingerprint detection algorithm ...")
         print("\tgamma: " + str(self.gamma) + "\n\tcorrelated attributes: " + str(correlated_attributes))
 
-        relation_fp = _read_data(dataset)
+        relation_fp = read_data(dataset)
         indices = list(relation_fp.dataframe.index)
         # number of numerical attributes minus primary key
         number_of_num_attributes = len(relation_fp.dataframe.select_dtypes(exclude='object').columns) - 1
