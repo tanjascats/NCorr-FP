@@ -1,3 +1,6 @@
+import time
+
+import numpy as np
 import numpy.random as random
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -9,6 +12,8 @@ import hashlib
 import bitstring
 import copy
 import warnings
+import timeit
+
 
 from utils import *
 
@@ -48,7 +53,7 @@ def init_balltrees(correlated_attributes, relation, dist_metric_discrete="hammin
             balltree_i = BallTree(relation.drop(attr, axis=1), metric=metric)
         balltree[attr] = balltree_i
     if show_messages:
-        print("Training balltrees in: " + str(round(time.time() - start_training_balltrees, 2)) + " sec.")
+        print("Training balltrees in: " + str(round(time.time() - start_training_balltrees, 4)) + " sec.")
     return balltree
 
 
@@ -118,7 +123,8 @@ def sample_from_area(data, percent=0.1, num_samples=1, dense=True, plot=False, s
     kde = gaussian_kde(data)
 
     # Create a range of values to evaluate the PDF
-    x = np.linspace(min(data), max(data), 1000)
+    n_points = len(data) * 10  # dynamic num of points adds on runtime but does not improve estimations
+    x = np.linspace(min(data), max(data), 100)  # n_points)  # 1000)
     pdf_values = kde(x)
 
     # Identify the threshold to exclude a percentage of the densest areas
@@ -165,7 +171,7 @@ def is_from_dense_area(sample, data, percent):
     kde = gaussian_kde(data)
 
     # Create a range of values to evaluate the PDF
-    x = np.linspace(min(data), max(data), 1000)
+    x = np.linspace(min(data), max(data), 100)  # 1000)
     pdf_values = kde(x)
 
     # Identify the threshold to exclude a percentage of the densest areas
@@ -336,7 +342,7 @@ class NCorrFP():
         return -1
 
     def insertion(self, dataset_name, recipient_id, secret_key, primary_key_name=None, outfile=None,
-                  correlated_attributes=None):
+                  correlated_attributes=None, save_computation=True):
         """
         Embeds a fingerprint into the data using NCorrFP algorithm.
         Args:
@@ -368,6 +374,7 @@ class NCorrFP():
         print("Inserting the fingerprint...\n")
 
         start = time.time()
+        time_profile = {'query_time': 0, 'write_time': 0, 'read_time': 0, 'mark_time': 0}
 
         # label encoder
         categorical_attributes = relation.select_dtypes(include='object').columns
@@ -393,8 +400,11 @@ class NCorrFP():
             if random.randint(0, _MAXINT) % self.gamma == 0:
                 # selecting the attribute
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # +1 to skip the prim key
+                read_start = time.time()
                 attr_name = r[1].index[attr_idx]
                 attribute_val = r[1].iloc[attr_idx]
+                read_end = time.time()
+                time_profile['read_time'] += read_end - read_start
 
                 # select fingerprint bit
                 fingerprint_idx = random.randint(0, _MAXINT) % self.fingerprint_bit_length
@@ -421,25 +431,53 @@ class NCorrFP():
                     other_attributes.remove('Id')
                     bt = balltree[attr_name]
                 if self.distance_based:
+                    querying_start = time.time()
                     neighbours, dist = bt.query_radius([relation[other_attributes].loc[r[0]]], r=self.d,
                                                        return_distance=True, sort_results=True)
+                    querying_end = time.time()
+                    time_profile['query_time'] += querying_end-querying_start
+ #                   print('Balltree querying in {} seconds.'.format(round(querying_end-querying_start, 8)))
                 else:
                     # nondeterminism - non chosen tuples with max distance
-                    dist, neighbours = bt.query([relation[other_attributes].loc[r[0]]], k=self.k)
-                    dist = dist[0].tolist()
-                    radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
-                    neighbours, dist = bt.query_radius(
-                        [relation[other_attributes].loc[r[0]]], r=radius, return_distance=True,
-                        sort_results=True)  # the list of neighbours is first (and only) element of the returned list
-                    neighbours = neighbours[0].tolist()
+                    if not save_computation:
+                        querying_start = time.time()
+                        dist, neighbours = bt.query([relation[other_attributes].loc[r[0]]], k=self.k)
+                        querying_end = time.time()
+                        time_profile['query_time'] += querying_end-querying_start
+ #                       print('Balltree querying (1st) in {} seconds.'.format(round(querying_end - querying_start, 8)))
+                        dist = dist[0].tolist()
+                        radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
+                        querying_start = time.time()
+                        neighbours, dist = bt.query_radius(
+                            [relation[other_attributes].loc[r[0]]], r=radius, return_distance=True,
+                            sort_results=True)  # the list of neighbours is first (and only) element of the returned list
+                        querying_end = time.time()
+                        time_profile['query_time'] += querying_end-querying_start
+#                        print('Balltree querying (2nd) in {} seconds.'.format(round(querying_end - querying_start, 8)))
+                        neighbours = neighbours[0].tolist()
+                    else: # we allow the flag for saving computation which requires only one query function but might result in non-determinism
+                        querying_start = time.time()
+                        dist, neighbours = bt.query([relation[other_attributes].loc[r[0]]], k=3*self.k)  # query with extra neighbourhs
+                        k_dist = dist[0][self.k - 1]  # Distance of the kth nearest neighbor
+                        neighbours = neighbours[0][dist[0] <= k_dist]  # Get k neighbours plus the ties
+                        querying_end = time.time()
+                        time_profile['query_time'] += querying_end-querying_start
+#                        print('Balltree querying (efficient) in {} seconds.'.format(round(querying_end - querying_start, 8)))
 
+                marking_start = time.time()
                 neighbourhood = relation.iloc[neighbours][attr_name].tolist()
                 if attr_name in categorical_attributes:
                     marked_attribute = mark_categorical_value(neighbourhood, mark_bit)
                 else:
                     marked_attribute = mark_continuous_value(neighbourhood, mark_bit, seed=seed)
+                marking_end = time.time()
+                time_profile['mark_time'] += marking_end - marking_start
 
+                writing_time_start = time.time()
                 fingerprinted_relation.at[r[0], r[1].keys()[attr_idx]] = marked_attribute
+                writing_time_end = time.time()
+                time_profile['write_time'] += writing_time_end - writing_time_start
+#                print('Writing one fingerprinted value in {} seconds.'.format(round(writing_time_end-writing_time_start, 8)))
 
         # delabeling
         for cat in categorical_attributes:
@@ -455,11 +493,13 @@ class NCorrFP():
             print("Runtime: " + str(round(runtime*1000, 2)) + " ms.")
         else:
             print("Runtime: " + str(round(runtime, 2)) + " sec.")
+        print(time_profile)
         if outfile is not None:
             fingerprinted_relation.to_csv(outfile, index=False)
         return fingerprinted_relation
 
-    def detection(self, dataset, secret_key, primary_key=None, correlated_attributes=None, original_columns=None):
+    def detection(self, dataset, secret_key, primary_key=None, correlated_attributes=None, original_columns=None,
+                  save_computation=True):
         """
 
         Args:
@@ -468,6 +508,7 @@ class NCorrFP():
             primary_key:
             correlated_attributes:
             original_columns:
+            save_computation:
 
         Returns:
             recipient_no: identification of the recipient of detected fingerprint
@@ -543,16 +584,22 @@ class NCorrFP():
                     neighbours, dist = bt.query_radius([relation_fp[other_attributes].loc[r[1].iloc[0]]], r=self.d,
                                                        return_distance=True, sort_results=True)
                 else:  # if it's neighbourhood-cardinality-based
-                    # find the neighborhood of cardinality k (non-deterministic)
-                    dist, neighbours = bt.query([relation_fp.dataframe[other_attributes].loc[r[1].iloc[0]]], k=self.k)
-                    dist = dist[0].tolist()
-                    # solve nondeterminism: get all other elements of max distance in the neighbourhood
-                    radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
-                    neighbours, dist = bt.query_radius(
-                        [relation_fp.dataframe[other_attributes].loc[r[1].iloc[0]]], r=radius, return_distance=True,
-                        sort_results=True)
-                    neighbours = neighbours[0].tolist()  # the list of neighbours was first (and only) element of the returned list
-                    dist = dist[0].tolist()
+                    if not save_computation:
+                        # find the neighborhood of cardinality k (non-deterministic)
+                        dist, neighbours = bt.query([relation_fp.dataframe[other_attributes].loc[r[1].iloc[0]]], k=self.k)
+                        dist = dist[0].tolist()
+                        # solve nondeterminism: get all other elements of max distance in the neighbourhood
+                        radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
+                        neighbours, dist = bt.query_radius(
+                            [relation_fp.dataframe[other_attributes].loc[r[1].iloc[0]]], r=radius, return_distance=True,
+                            sort_results=True)
+                        neighbours = neighbours[0].tolist()  # the list of neighbours was first (and only) element of the returned list
+                        dist = dist[0].tolist()
+
+                    else:  # we allow potential non-determinism to reduce the execusion time
+                        dist, neighbours = bt.query([relation_fp.dataframe[other_attributes].loc[r[0]]], k=3*self.k)
+                        k_dist = dist[0][self.k - 1]
+                        neighbours = neighbours[0][dist[0] <= k_dist]  # get k neighbours plus the ties
 
                 # check the frequencies of the values
                 neighbourhood = relation_fp.dataframe.iloc[neighbours][attr_name].tolist()
@@ -917,3 +964,86 @@ class NCorrFP():
         else:
             print("Runtime: " + str(round(runtime, 2)) + " sec.")
         return True
+
+
+def plot_runtime(plt_insertion=True, plt_detection=True, n_exp=5):
+    # Parameters to vary
+    data_sizes = [300, 1000, 3000, 10000, 30000]
+    ks = [10, 30, 50, 100]
+
+    # Data structure to collect the results
+    results = []
+    for data_size in data_sizes:
+        for k in ks:
+            insertion_runtimes = []
+            detection_runtimes = []
+            for _ in range(n_exp):
+                scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, k=k)
+                original_path = "NCorrFP_scheme/test/test_data/synthetic_{}_3_continuous.csv".format(data_size)
+                correlated_attributes = ['X', 'Y']
+                start_time = timeit.default_timer()
+                fingerprinted_data = scheme.insertion(original_path, primary_key_name='Id', secret_key=101,
+                                                      recipient_id=4,
+                                                      correlated_attributes=correlated_attributes,
+                                                      save_computation=True)
+                elapsed_time = timeit.default_timer() - start_time
+                insertion_runtimes.append(elapsed_time)
+
+                if plt_detection:
+                    start_time = timeit.default_timer()
+                    suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
+                                               correlated_attributes=correlated_attributes,
+                                               original_columns=["X", 'Y', 'Z'])
+                    elapsed_time = timeit.default_timer() - start_time
+                    detection_runtimes.append(elapsed_time)
+
+            # Collect the average and standard deviation of runtimes
+            avg_runtime_insert = np.mean(insertion_runtimes)
+            std_runtime_insert = np.std(insertion_runtimes)
+            avg_runtime_detect = np.mean(detection_runtimes)
+            std_runtime_detect = np.std(detection_runtimes)
+            results.append({
+                'data_size': data_size,
+                'k': k,
+                'avg_runtime_insert': avg_runtime_insert,
+                'std_runtime_insert': std_runtime_insert,
+                'avg_runtime_detect': avg_runtime_detect,
+                'std_runtime_detect': std_runtime_detect
+            })
+
+    # Convert results into a Pandas DataFrame
+    df_results = pd.DataFrame(results)
+
+    if plt_insertion:
+        # Plot the results for embedding
+        plt.figure(figsize=(10, 6))
+
+        # Plot runtime for each k value with error bars for std deviation
+        for k in ks:
+            subset = df_results[df_results['k'] == k]
+            plt.errorbar(subset['data_size'], subset['avg_runtime_insert'], yerr=subset['std_runtime_insert'],
+                         label=f'k={k}', marker='o', capsize=5)
+
+        plt.xlabel('Data Size')
+        plt.ylabel('Average Runtime (seconds)')
+        plt.title('NCorrFP embedding runtime')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+    if plt_detection:
+        # Plot the results for detection
+        plt.figure(figsize=(10, 6))
+
+        # Plot runtime for each k value with error bars for std deviation
+        for k in ks:
+            subset = df_results[df_results['k'] == k]
+            plt.errorbar(subset['data_size'], subset['avg_runtime_detect'], yerr=subset['std_runtime_detect'],
+                         label=f'k={k}', marker='o', capsize=5)
+
+        plt.xlabel('Data Size')
+        plt.ylabel('Average Runtime (seconds)')
+        plt.title('NCorrFP detection runtime')
+        plt.legend()
+        plt.grid(True)
+        plt.show()

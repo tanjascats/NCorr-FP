@@ -1,6 +1,7 @@
 import unittest
 import itertools
 from ..NCorrFP import *
+import cProfile
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
@@ -208,3 +209,27 @@ class TestNCorrFP(unittest.TestCase):
                                                      "deg-malig", "breast", "breast-quad",
                                                      "irradiat", "recurrence"])
         self.assertIs(suspect, 4, msg="SUCCESS. The detected recipient is correct.")
+
+    def test_runtime(self):
+        # done: weak points? (hypothesis: reading and writing to pandas df is slow; querying ball-trees is expensive...)
+        # done: testing the full runtime over #records -- linearity?
+        # done: optimisation
+        # done: runtime estimation
+        # done: same drill for insertion and detection
+        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, k=10)
+        original_path = "NCorrFP_scheme/test/test_data/synthetic_1000_3_continuous.csv"
+        correlated_attributes = ['X', 'Y']
+        start_insertion = time.time()
+        fingerprinted_data = scheme.insertion(original_path, primary_key_name='Id', secret_key=101, recipient_id=4,
+                                              correlated_attributes=correlated_attributes, save_computation=True)
+        end_insertion = time.time()
+        time_insertion = end_insertion - start_insertion
+        start_detection = time.time()
+        suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
+                                   correlated_attributes=correlated_attributes,
+                                   original_columns=["X", 'Y', 'Z'])
+        time_detection = time.time() - start_detection
+        print('Runtime:\n\t-Insertion in {} seconds.'.format(round(time_insertion, 4)))
+        print('Runtime:\n\t-Detection in {} seconds.'.format(time_detection))
+        #self.assertIs(suspect, 4, msg="SUCCESS. The detected recipient is correct.")
+

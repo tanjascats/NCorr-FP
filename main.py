@@ -1,3 +1,4 @@
+import NCorrFP_scheme.NCorrFP
 import attacks.bit_flipping_attack
 from NCorrFP_scheme.NCorrFP import NCorrFP
 import numpy as np
@@ -270,4 +271,4 @@ if __name__ == '__main__':
     # new_values = sample_from_dense_areas(data, exclude_percent=0.1, num_samples=20)
     # print("New sampled values (from less dense areas):", new_values)
     #test_gower_distance()
-    test_detection_continuous()
+    NCorrFP_scheme.NCorrFP.plot_runtime()
