@@ -250,12 +250,14 @@ def test_gower_distance():
 
 
 def test_detection_continuous():
-    scheme = NCorrFP(gamma=5, fingerprint_bit_length=64, k=30)
-    original_path = "NCorrFP_scheme/test/test_data/synthetic_30000_3_continuous.csv"
+    scheme = NCorrFP(gamma=2, fingerprint_bit_length=32, k=100)
+    original_path = "NCorrFP_scheme/test/test_data/synthetic_1000_3_continuous.csv"
     original = pd.read_csv(original_path)
     correlated_attributes = ['X', 'Y']
-    fingerprinted_data = scheme.insertion(original_path, primary_key_name='Id', secret_key=101, recipient_id=4,
-                                          correlated_attributes=correlated_attributes)
+    recipient = 2
+    fingerprinted_data = scheme.insertion(original_path, primary_key_name='Id', secret_key=101, recipient_id=recipient,
+                                          correlated_attributes=correlated_attributes, save_computation=True,
+                                          outfile='NCorrFP_scheme/test/out_data/test_id{}.csv'.format(recipient))
     suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
                                correlated_attributes=correlated_attributes,
                                original_columns=["X", 'Y', 'Z'])
@@ -271,4 +273,5 @@ if __name__ == '__main__':
     # new_values = sample_from_dense_areas(data, exclude_percent=0.1, num_samples=20)
     # print("New sampled values (from less dense areas):", new_values)
     #test_gower_distance()
-    NCorrFP_scheme.NCorrFP.plot_runtime()
+    #NCorrFP_scheme.NCorrFP.plot_runtime()
+    test_detection_continuous()

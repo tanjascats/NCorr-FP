@@ -554,7 +554,7 @@ class NCorrFP():
         count = [[0, 0] for x in range(self.fingerprint_bit_length)]
 
         for r in relation_fp.dataframe.iterrows():
-            seed = int((self.secret_key << self.__primary_key_len) + r[1].iloc[0])  # primary key must be the first column
+            seed = int((secret_key << self.__primary_key_len) + r[1].iloc[0])  # primary key must be the first column
             random.seed(seed)
             # this tuple was marked
             if random.choices([0, 1], [1 / self.gamma, 1 - 1 / self.gamma]) == [0]:
