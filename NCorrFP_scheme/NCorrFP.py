@@ -1,7 +1,7 @@
 import time
 
 import numpy as np
-import numpy.random as random
+import random
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde
@@ -142,7 +142,7 @@ def sample_from_area(data, percent=0.1, num_samples=1, dense=True, plot=False, s
     masked_cdf /= masked_cdf[-1]
 
     # Inverse transform sampling from the adjusted CDF
-    np.random.seed(seed=seed)
+    np.random.seed(seed)
     random_values = np.random.rand(num_samples)
     sampled_values = np.interp(random_values, masked_cdf, x)
     #print(sampled_values)
@@ -208,8 +208,7 @@ def mark_categorical_value(neighbours, mark_bit):
         if mark_bit == 0 and len(frequencies.keys()) > 1:
             # choose among less frequent values, weighted by their frequencies
             norm_freq = list(frequencies.values())[1:] / np.sum(list(frequencies.values())[1:])
-            marked_attribute = random.choice(list(frequencies.keys())[1:], 1,
-                                             p=norm_freq)[0]
+            marked_attribute = np.random.choice(list(frequencies.keys())[1:], 1, p=norm_freq)[0]
         else:  # choose the most frequent value
             marked_attribute = list(frequencies.keys())[0]
     else:
@@ -393,11 +392,11 @@ class NCorrFP():
         for r in relation.iterrows():
             # r[0] is an index of a row = primary key
             # seed = concat(secret_key, primary_key)
-            seed = (self.secret_key << self.__primary_key_len) + r[1].iloc[0]  # first column must be primary ke
+            seed = int((self.secret_key << self.__primary_key_len) + r[1].iloc[0])  # first column must be primary key
             random.seed(seed)
 
             # selecting the tuple
-            if random.randint(0, _MAXINT) % self.gamma == 0:
+            if random.choices([0, 1], [1 / self.gamma, 1 - 1 / self.gamma]) == [0]:  # gamma can be a float
                 # selecting the attribute
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # +1 to skip the prim key
                 read_start = time.time()
@@ -555,10 +554,10 @@ class NCorrFP():
         count = [[0, 0] for x in range(self.fingerprint_bit_length)]
 
         for r in relation_fp.dataframe.iterrows():
-            seed = (self.secret_key << self.__primary_key_len) + r[1].iloc[0]  # primary key must be the first column
+            seed = int((self.secret_key << self.__primary_key_len) + r[1].iloc[0])  # primary key must be the first column
             random.seed(seed)
             # this tuple was marked
-            if random.randint(0, _MAXINT) % self.gamma == 0:
+            if random.choices([0, 1], [1 / self.gamma, 1 - 1 / self.gamma]) == [0]:
                 # this attribute was marked (skip the primary key)
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # add 1 to skip the primary key
                 attr_name = r[1].index[attr_idx]
@@ -687,7 +686,7 @@ class NCorrFP():
             seed = (self.secret_key << self.__primary_key_len) + r[1].iloc[0]  # first column must be primary key
             random.seed(seed)
             # selecting the tuple
-            if random.randint(0, _MAXINT) % self.gamma == 0:
+            if random.choices([0, 1], [1 / self.gamma, 1 - 1 / self.gamma]) == [0]:
                 iteration = {'seed': seed, 'row_index': r[1].iloc[0]}
                 # selecting the attribute
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # +1 to skip the prim key
@@ -828,7 +827,7 @@ class NCorrFP():
             seed = (self.secret_key << self.__primary_key_len) + r[1].iloc[0]  # primary key must be the first column
             random.seed(seed)
             # this tuple was marked
-            if random.randint(0, _MAXINT) % self.gamma == 0:
+            if random.choices([0, 1], [1 / self.gamma, 1 - 1 / self.gamma]) == [0]:
                 iteration = {'seed': seed, 'row_index': r[1].iloc[0]}
                 # this attribute was marked (skip the primary key)
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # add 1 to skip the primary key

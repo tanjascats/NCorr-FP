@@ -26,11 +26,12 @@ class TestNCorrFP(unittest.TestCase):
                                               'attributes.')
 
     def test_detection_single_correlation(self):
-        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
+        secret_key = 106
+        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, k=20)
         correlated_attributes = ['inv-nodes', 'node-caps']
-        fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=101, recipient_id=4,
+        fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=secret_key, recipient_id=4,
                                               correlated_attributes=correlated_attributes)
-        suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
+        suspect = scheme.detection(fingerprinted_data, secret_key=secret_key, primary_key='Id',
                                    correlated_attributes=['inv-nodes', 'node-caps'],
                                    original_columns=["age", "menopause", "tumor-size", "inv-nodes", "node-caps",
                                                      "deg-malig", "breast", "breast-quad",
@@ -38,7 +39,7 @@ class TestNCorrFP(unittest.TestCase):
         self.assertIs(suspect, 4, msg="SUCCESS. The detected recipient is correct.")
 
     def test_insertion_multi_correlation(self):
-        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
+        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, k=20)
         original = pd.read_csv("datasets/breast_cancer_full.csv")
         correlated_attributes = [['inv-nodes', 'node-caps'], ['age', 'menopause']]
         fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=101, recipient_id=4,
@@ -66,11 +67,13 @@ class TestNCorrFP(unittest.TestCase):
                       msg='SUCCESS. No new occurences of value combinations for correlated attributes.')
 
     def test_detection_multi_correlation(self):
-        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
-        correlated_attributes = [['age', 'menopause'],['inv-nodes', 'node-caps']]
-        fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=101, recipient_id=4,
+        secret_key = 1101
+        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, k=20)
+        correlated_attributes = [['age', 'menopause'], ['inv-nodes', 'node-caps']]
+        fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=secret_key,
+                                              recipient_id=4,
                                               correlated_attributes=correlated_attributes)
-        suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
+        suspect = scheme.detection(fingerprinted_data, secret_key=secret_key, primary_key='Id',
                                    correlated_attributes=correlated_attributes,
                                    original_columns=["age", "menopause", "tumor-size", "inv-nodes", "node-caps",
                                                      "deg-malig", "breast", "breast-quad",
@@ -185,7 +188,7 @@ class TestNCorrFP(unittest.TestCase):
         self.assertAlmostEqual(correlation_fingerprinted, correlation_original, None, message, delta)
 
     def test_detection_continuous(self):
-        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, k=10)
+        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, k=30)
         original_path = "NCorrFP_scheme/test/test_data/synthetic_300_3_continuous.csv"
         original = pd.read_csv(original_path)
         correlated_attributes = ['X', 'Y']
@@ -197,13 +200,14 @@ class TestNCorrFP(unittest.TestCase):
         self.assertIs(suspect, 4, msg="SUCCESS. The detected recipient is correct.")
 
     def test_categorical_minkowski(self):
+        secret_key = 1010
         distance_metric = 'minkowski'
-        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, distance_metric_discrete=distance_metric, k=15)
+        scheme = NCorrFP(gamma=1, fingerprint_bit_length=16, distance_metric_discrete=distance_metric, k=20)
         original = pd.read_csv("datasets/breast_cancer_full.csv")
         correlated_attributes = ['inv-nodes', 'node-caps']
-        fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=101, recipient_id=4,
+        fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=secret_key, recipient_id=4,
                                               correlated_attributes=correlated_attributes)
-        suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
+        suspect = scheme.detection(fingerprinted_data, secret_key=secret_key, primary_key='Id',
                                    correlated_attributes=correlated_attributes,
                                    original_columns=["age", "menopause", "tumor-size", "inv-nodes", "node-caps",
                                                      "deg-malig", "breast", "breast-quad",
@@ -233,3 +237,14 @@ class TestNCorrFP(unittest.TestCase):
         print('Runtime:\n\t-Detection in {} seconds.'.format(time_detection))
         #self.assertIs(suspect, 4, msg="SUCCESS. The detected recipient is correct.")
 
+    def test_detection_gamma_float(self):
+        scheme = NCorrFP(gamma=1/0.7, fingerprint_bit_length=16, k=100)
+        original_path = "NCorrFP_scheme/test/test_data/synthetic_1000_3_continuous.csv"
+        original = pd.read_csv(original_path)
+        correlated_attributes = ['X', 'Y']
+        fingerprinted_data = scheme.insertion(original_path, primary_key_name='Id', secret_key=101, recipient_id=4,
+                                              correlated_attributes=correlated_attributes)
+        suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
+                                   correlated_attributes=correlated_attributes,
+                                   original_columns=["X", 'Y', 'Z'])
+        self.assertIs(suspect, 4, msg="SUCCESS. The detected recipient is correct.")

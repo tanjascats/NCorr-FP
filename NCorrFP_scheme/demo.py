@@ -37,7 +37,7 @@ class Demo():
         if show_messages:
             print('DONE!')
 
-    def insertion(self, show_messagess=True):
+    def insertion(self, show_messagess=True, optimise=True):
         if show_messagess:
             print("Start the demo NCorr fingerprint insertion algorithm...")
             print("\tgamma: " + str(self.scheme.gamma) + "\n\tcorrelated attributes: " + str(self.correlated_attributes))
@@ -81,7 +81,7 @@ class Demo():
             seed = (self.secret_key << self.__primary_key_len) + r[1].iloc[0]  # first column must be primary key
             random.seed(seed)
             # selecting the tuple
-            if random.randint(0, _MAXINT) % self.scheme.gamma == 0:
+            if random.choices([0, 1], [1/self.scheme.gamma, 1-1/self.scheme.gamma]) == [0]:
                 iteration = {'seed': seed, 'row_index': r[1].iloc[0]}
                 # selecting the attribute
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # +1 to skip the prim key
@@ -121,14 +121,20 @@ class Demo():
                                                        return_distance=True, sort_results=True)
 
                 else:
-                    # nondeterminism - non chosen tuples with max distance
-                    dist, neighbours = bt.query([relation[other_attributes].loc[r[0]]], k=self.scheme.k)
-                    dist = dist[0].tolist()
-                    radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
-                    neighbours, dist = bt.query_radius(
-                        [relation[other_attributes].loc[r[0]]], r=radius, return_distance=True,
-                        sort_results=True)  # the list of neighbours is first (and only) element of the returned list
-                    neighbours = neighbours[0].tolist()
+                    if not optimise:
+                        # nondeterminism - non chosen tuples with max distance
+                        dist, neighbours = bt.query([relation[other_attributes].loc[r[0]]], k=self.scheme.k)
+                        dist = dist[0].tolist()
+                        radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
+                        neighbours, dist = bt.query_radius(
+                            [relation[other_attributes].loc[r[0]]], r=radius, return_distance=True,
+                            sort_results=True)  # the list of neighbours is first (and only) element of the returned list
+                        neighbours = neighbours[0].tolist()
+                    else:
+                        dist, neighbours = bt.query([relation[other_attributes].loc[r[0]]], k=3*self.scheme.k)  # query with extra neighbourhs
+                        k_dist = dist[0][self.scheme.k - 1]  # Distance of the kth nearest neighbor
+                        neighbours = neighbours[0][dist[0] <= k_dist]  # Get k neighbours plus the ties
+
                 dist = dist[0].tolist()
                 iteration['neighbors'] = neighbours
                 iteration['dist'] = dist
@@ -181,7 +187,7 @@ class Demo():
         return fingerprinted_relation, iter_log
 
 
-    def detection(self, show_messages=True):
+    def detection(self, show_messages=True, optimise=True):
         if show_messages:
             print("Start demo NCorr fingerprint detection algorithm ...")
             print("\tgamma: " + str(self.scheme.gamma) + "\n\tcorrelated attributes: " + str(self.correlated_attributes))
@@ -258,17 +264,22 @@ class Demo():
                     neighbours, dist = bt.query_radius([relation_fp[other_attributes].loc[r[1].iloc[0]]], r=self.scheme.d,
                                                        return_distance=True, sort_results=True)
                 else:
-                    # find the neighborhood of cardinality k (non-deterministic)
-                    dist, neighbours = bt.query([relation_fp[other_attributes].loc[r[1].iloc[0]]], k=self.scheme.k)
-                    dist = dist[0].tolist()
-                    # solve nondeterminism: get all other elements of max distance in the neighbourhood
-                    radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
-                    neighbours, dist = bt.query_radius(
-                        [relation_fp[other_attributes].loc[r[1].iloc[0]]], r=radius, return_distance=True,
-                        sort_results=True)
-                    neighbours = neighbours[
-                        0].tolist()  # the list of neighbours was first (and only) element of the returned list
-                    dist = dist[0].tolist()
+                    if not optimise:
+                        # find the neighborhood of cardinality k (non-deterministic)
+                        dist, neighbours = bt.query([relation_fp[other_attributes].loc[r[1].iloc[0]]], k=self.scheme.k)
+                        dist = dist[0].tolist()
+                        # solve nondeterminism: get all other elements of max distance in the neighbourhood
+                        radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
+                        neighbours, dist = bt.query_radius(
+                            [relation_fp[other_attributes].loc[r[1].iloc[0]]], r=radius, return_distance=True,
+                            sort_results=True)
+                        neighbours = neighbours[
+                            0].tolist()  # the list of neighbours was first (and only) element of the returned list
+                        dist = dist[0].tolist()
+                    else:
+                        dist, neighbours = bt.query([relation_fp[other_attributes].loc[r[0]]], k=3*self.scheme.k)
+                        k_dist = dist[0][self.scheme.k - 1]
+                        neighbours = neighbours[0][dist[0] <= k_dist]  # get k neighbours plus the ties
 
                 iteration['neighbors'] = neighbours
                 iteration['dist'] = dist
