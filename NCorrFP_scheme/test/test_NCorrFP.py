@@ -1,5 +1,8 @@
 import unittest
 import itertools
+
+import numpy as np
+
 from ..NCorrFP import *
 import cProfile
 
@@ -248,3 +251,21 @@ class TestNCorrFP(unittest.TestCase):
                                    correlated_attributes=correlated_attributes,
                                    original_columns=["X", 'Y', 'Z'])
         self.assertIs(suspect, 4, msg="SUCCESS. The detected recipient is correct.")
+
+    def test_generate_fingerprint_tardos_consistency(self):
+        secret_key = 101
+        rid = 0
+        scheme = NCorrFP(fingerprint_bit_length=16, fingerprint_code_type='tardos')
+        fingerprint_1 = scheme.create_fingerprint(recipient_id=rid, secret_key=secret_key)
+
+        fingerprint_2 = scheme.create_fingerprint(recipient_id=rid, secret_key=secret_key)
+        self.assertTrue(np.array_equal(fingerprint_2, fingerprint_1))
+
+    def test_generate_fingerprint_tardos_diversity(self):
+        secret_key = 101
+        scheme = NCorrFP(fingerprint_bit_length=16, fingerprint_code_type='tardos')
+        fingerprints = []
+        for i in range(16):
+            fingerprints.append(scheme.create_fingerprint(recipient_id=i, secret_key=secret_key))
+        unique_fps = {tuple(fp) for fp in fingerprints}
+        self.assertEqual(len(unique_fps), len(fingerprints))

@@ -1,6 +1,7 @@
 from NCorrFP_scheme.NCorrFP import NCorrFP
+import tardos_codes
 import pandas as pd
-
+import numpy as np
 
 # testing naive approaches to collusion attack
 
@@ -57,6 +58,17 @@ def collude_2_avg(dataset_paths=None):
     print(scheme.detected_fp)
 
 
+def test_tardos(codes, marked_code):
+    p = np.random.beta(0.5, 0.5, size=32)
+    suspected_colluders = tardos_codes._detect_colluders_old(codes, marked_code, p, k=0.9)  # , threshold)
+    return suspected_colluders
+
+def bitstring_to_array(bitstring):
+    return [int(bit) for bit in bitstring]
+
 if __name__ == '__main__':
-    collude_2_avg(['NCorrFP_scheme/test/out_data/test_id2.csv',
-                   'NCorrFP_scheme/test/out_data/test_id4.csv'])
+    #collude_2_avg(['NCorrFP_scheme/test/out_data/test_id2.csv',
+    #               'NCorrFP_scheme/test/out_data/test_id4.csv'])
+    test_tardos([bitstring_to_array('01011100001111100110001010110100'),
+                 bitstring_to_array('00000100011110101000001110000100')],
+                bitstring_to_array("00001100001111101120001110000100"))
