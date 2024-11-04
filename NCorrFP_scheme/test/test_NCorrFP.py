@@ -269,3 +269,4 @@ class TestNCorrFP(unittest.TestCase):
             fingerprints.append(scheme.create_fingerprint(recipient_id=i, secret_key=secret_key))
         unique_fps = {tuple(fp) for fp in fingerprints}
         self.assertEqual(len(unique_fps), len(fingerprints))
+

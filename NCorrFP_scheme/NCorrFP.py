@@ -1,8 +1,6 @@
-import time
-
-import numpy as np
 import random
 import matplotlib.pyplot as plt
+from numpy import ndarray
 from scipy.stats import gaussian_kde
 from sklearn.preprocessing import LabelEncoder
 from sklearn.neighbors import BallTree
@@ -12,7 +10,7 @@ import bitstring
 import copy
 import timeit
 
-import tardos_codes
+from fp_codes import tardos
 from utils import *
 
 _MAXINT = 2**31 - 1
@@ -290,21 +288,36 @@ def create_hash_fingerprint(secret_key, recipient_id, fingerprint_bit_length):
     return fingerprint
 
 
-def detect_hash_fingerprint(fingerprint, secret_key):
+def decode_hash_fingerprint(fingerprint, secret_key, total_recipients):
+    """
+
+    Args:
+        fingerprint: bit sequence that represents the suspicious fingerprint
+        secret_key: owner's secret
+
+    Returns: a dictionary (recipient_id: matching confidence)
+
+    """
     # todo: make consistent
     shift = 10
-    # for each recipient
-    for recipient_id in range(number_of_recipients):
+    fingerprint_bit_length = len(fingerprint)
+    # calculate the matching score for each recipient
+
+    # for each recipient calculate the confidence by a percentage of position-wise bit matching
+    confidence = dict()
+    for recipient_id in range(total_recipients):
         recipient_seed = (secret_key << shift) + recipient_id
         b = hashlib.blake2b(key=recipient_seed.to_bytes(6, 'little'),
                             digest_size=int(fingerprint_bit_length / 8))
         recipient_fp = BitArray(hex=b.hexdigest())
         recipient_fp = recipient_fp.bin
         # convert to numpy array for consistency
-        recipient_fp = np.array(list(recipient_fp.bin), dtype=int)
-        if np.array_equal(recipient_fp, fingerprint):
-            return recipient_id
-    return -1
+        recipient_fp = np.array(list(recipient_fp), dtype=int)
+        confidence[recipient_id] = np.sum(recipient_fp == fingerprint) / len(fingerprint)
+#        # exact matching
+#        if np.array_equal(recipient_fp, fingerprint):
+#            return recipient_id
+    return confidence
 
 
 class NCorrFP():
@@ -373,8 +386,9 @@ class NCorrFP():
             fingerprint = None
             exit('Please specify valid type of fingerprint code ({})'.format(__valid_types))
         if show_messages:
-            fp_msg = "\nGenerated a {} fingerprint for recipient {}: {}".format(self.fingerprint_code_type, recipient_id,
-                                                                              fingerprint)
+            fp_msg = "\nGenerated a {} fingerprint for recipient {}: {}".format(self.fingerprint_code_type,
+                                                                                recipient_id,
+                                                                                list_to_string(fingerprint))
             print(fp_msg)
         return fingerprint
 
@@ -383,16 +397,20 @@ class NCorrFP():
         Detects a suspect from the extracted fingerprint
         :param fingerprint: string of characters describing binary representation of a fingerprint or a bitstring
         :param secret_key: owner's secret key used to fingerprint the data
-        :return: id of a suspect or -1 if no suspect is detected
+        :return:
         """
         if isinstance(fingerprint, bitstring.BitArray):
-            fingerprint = np.array(list(fingerprint.bin), dtype=int)
+            fingerprint: ndarray = np.array(list(fingerprint.bin), dtype=int)
 
         if self.fingerprint_code_type == 'hash':
-            detect_hash_fingerprint(fingerprint, secret_key)
+            suspects = decode_hash_fingerprint(fingerprint, secret_key, self.number_of_recipients)
         elif self.fingerprint_code_type == 'tardos':
-            tardos_codes.detect_colluders(fingerprint, secret_key, k=0.9)
-        return -1  # todo: return colluders
+            pass
+            # first we check direct matching 
+            tardos_codes.decode_fingerprint(fingerprint, secret_key, self.number_of_recipients)
+            #exact_match(fingerprint)
+            # tardos_codes.detect_colluders(fingerprint, secret_key, k=0.9)
+        return suspects  # todo: return colluders
 
     def insertion(self, dataset_name, recipient_id, secret_key, primary_key_name=None, outfile=None,
                   correlated_attributes=None, save_computation=True):
@@ -423,7 +441,6 @@ class NCorrFP():
         tot_attributes = number_of_num_attributes + number_of_cat_attributes
 
         fingerprint = self.create_fingerprint(recipient_id, secret_key)
-        print("\nGenerated fingerprint for recipient " + str(recipient_id) + ": " + str(fingerprint))
         print("Inserting the fingerprint...\n")
 
         start = time.time()
@@ -679,17 +696,22 @@ class NCorrFP():
         self.count = count
         print(count)
 
-        recipient_no = self.detect_potential_traitor(fingerprint_template, secret_key)
-        if recipient_no >= 0:
-            print("Fingerprint belongs to Recipient " + str(recipient_no))
-        else:
-            print("None suspected.")
+        # todo: adjust this part for the new types of fingerprint codes
+        suspects = self.detect_potential_traitor(fingerprint_template, secret_key)
+        print("The fingerprint is matched with probabilities:")
+        print(sorted(suspects.items(), key=lambda item: item[1], reverse=True))
+#        recipient_no = self.detect_potential_traitor(fingerprint_template, secret_key)
+#        if recipient_no >= 0:
+#            print("Fingerprint belongs to Recipient " + str(recipient_no))
+#        else:
+#            print("None suspected.")
         runtime = time.time() - start
         if runtime < 1:
             print("Runtime: " + str(int(runtime)*1000) + " ms.")
         else:
             print("Runtime: " + str(round(runtime, 2)) + " sec.")
-        return recipient_no
+        # todo: define a return statement -- just the most likely recipient?
+        return fingerprint_template, count
 
     def demo_insertion(self, dataset_name, recipient_id, secret_key, primary_key_name=None, outfile=None,
                        correlated_attributes=None):

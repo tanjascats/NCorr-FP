@@ -250,7 +250,7 @@ def test_gower_distance():
 
 
 def test_detection_continuous():
-    scheme = NCorrFP(gamma=2, fingerprint_bit_length=32, k=100)
+    scheme = NCorrFP(gamma=2, fingerprint_bit_length=32, k=100, number_of_recipients=10, fingerprint_code_type='hash')
     original_path = "NCorrFP_scheme/test/test_data/synthetic_1000_3_continuous.csv"
     original = pd.read_csv(original_path)
     correlated_attributes = ['X', 'Y']

@@ -120,6 +120,10 @@ def list_to_string(l):
     return s
 
 
+def string_to_array(s):
+    return np.fromstring(s, dtype='uint8') - ord('0')
+
+
 def count_differences(dataset1, dataset2):
     if len(dataset1) != len(dataset2):
         print("Please pass two datasets of same size.")
