@@ -1,5 +1,6 @@
 import NCorrFP_scheme.NCorrFP
 import attacks.bit_flipping_attack
+import datasets
 from NCorrFP_scheme.NCorrFP import NCorrFP
 import numpy as np
 import matplotlib.pyplot as plt
@@ -274,4 +275,6 @@ if __name__ == '__main__':
     # print("New sampled values (from less dense areas):", new_values)
     #test_gower_distance()
     #NCorrFP_scheme.NCorrFP.plot_runtime()
-    test_detection_continuous()
+    #test_detection_continuous()
+    data = datasets.Adult()
+    scheme = NCorrFP(gamma=2, fingerprint_bit_length=64, k=100, number_of_recipients=10, fingerprint_code_type='hash')

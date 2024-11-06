@@ -325,7 +325,7 @@ class NCorrFP():
     __primary_key_len = 20
 
     def __init__(self, gamma=1, xi=1, fingerprint_bit_length=32, number_of_recipients=100, distance_based=False,
-                 d=0, k=10, distance_metric_discrete="hamming", distance_metric_continuous='minkowski',
+                 d=0, k=50, distance_metric_discrete="hamming", distance_metric_continuous='minkowski',
                  fingerprint_code_type='tardos'):
         """
 
@@ -432,7 +432,11 @@ class NCorrFP():
         if secret_key is not None:
             self.secret_key = secret_key
         # it is assumed that the first column in the dataset is the primary key
-        relation, primary_key_name = import_dataset_from_file(dataset_name, primary_key_name)
+        if isinstance(dataset_name, Dataset):
+            relation = dataset_name.dataframe
+            primary_key_name = dataset_name.get_primary_key_attribute()
+        else:
+            relation, primary_key_name = import_dataset_from_file(dataset_name, primary_key_name)
         # number of numerical attributes minus primary key
         number_of_num_attributes = len(relation.select_dtypes(exclude='object').columns) - 1
         # number of non-numerical attributes
@@ -498,7 +502,8 @@ class NCorrFP():
                 else:
                     other_attributes = r[1].index.tolist().copy()
                     other_attributes.remove(attr_name)
-                    other_attributes.remove('Id')
+                    if 'Id' in other_attributes:
+                        other_attributes.remove('Id')
                     bt = balltree[attr_name]
                 if self.distance_based:
                     querying_start = time.time()
@@ -587,7 +592,11 @@ class NCorrFP():
 
         """
         print("Start NCorr fingerprint detection algorithm ...")
-        print("\tgamma: " + str(self.gamma) + "\n\tcorrelated attributes: " + str(correlated_attributes))
+        print("\tgamma: " + str(self.gamma) +
+              "\n\tk: " + str(self.k) +
+              "\n\tfp length: " + str(self.fingerprint_bit_length) +
+              "\n\ttotal # recipients: " + str(self.number_of_recipients) +
+              "\n\tcorrelated attributes: " + str(correlated_attributes))
 
         relation_fp = read_data(dataset)
         # indices = list(relation_fp.dataframe.index)
@@ -710,8 +719,8 @@ class NCorrFP():
             print("Runtime: " + str(int(runtime)*1000) + " ms.")
         else:
             print("Runtime: " + str(round(runtime, 2)) + " sec.")
-        # todo: define a return statement -- just the most likely recipient?
-        return fingerprint_template, count
+        # todo: define a return statement -- just the most likely recipient? Probability vec?
+        return fingerprint_template, count, suspects
 
     def demo_insertion(self, dataset_name, recipient_id, secret_key, primary_key_name=None, outfile=None,
                        correlated_attributes=None):

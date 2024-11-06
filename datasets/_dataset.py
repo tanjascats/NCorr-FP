@@ -2,19 +2,24 @@ from abc import ABC, abstractmethod
 import pandas as pd
 import os
 from sklearn.preprocessing import LabelEncoder
+from ucimlrepo import fetch_ucirepo
+
 
 
 class Dataset(ABC):
     """
     Abstract class used to represent the dataset within the toolbox
     """
-    def __init__(self, target_attribute, path=None, dataframe=None, primary_key_attribute=None):
+    def __init__(self, target_attribute, path=None, dataframe=None, primary_key_attribute=None, correlated_attrs=None,
+                 name=None):
         if path is None and dataframe is None:
             raise ValueError('Error defining a data set! Please provide either a path or a Pandas DataFrame to '
                              'instantiate a data set')
 
         self.path = path
         self.dataframe = dataframe
+        self.correlated_attrs = correlated_attrs
+        self.name = name
 
         if self.path is not None and not isinstance(self.path, str):
             raise TypeError('Data set path must be a string value.')
@@ -152,16 +157,16 @@ class Dataset(ABC):
         return self.dataframe.dtypes
 
     def dropna(self):
-        '''
+        """
         Dropping samples (rows) with missing values. Returns the Dataset object.
-        '''
+        """
         self.dataframe = self.dataframe.dropna()
         return self
 
     def drop(self, labels, axis=1):
-        '''
+        """
         Equivalent of pandas drop
-        '''
+        """
         if axis == 1:
             self.dataframe = self.dataframe.drop(labels, axis=1)
             self.columns = self.dataframe.columns
@@ -195,6 +200,34 @@ class BreastCancer(Dataset):
     def __init__(self):
         path = 'datasets/breast_cancer_full.csv'
         super().__init__(path=path, primary_key_attribute='Id', target_attribute='recurrence')
+
+
+class CovertypeSample(Dataset):
+    # A sample of 50,000 records and only integer features
+    def __init__(self):
+        correlations = [['Hillshade_9am', 'Hillshade_3pm', 'Aspect', 'Hillshade_Noon'],
+                        ['Elevation', 'Horizontal_Distance_To_Roadways']]
+
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'covertype-sample.csv')
+        if os.path.exists(path):
+            super().__init__(path=path, primary_key_attribute='Id', target_attribute='Cover_Type',
+                             name='covertype-sample', correlated_attrs=correlations)
+        else:
+            covertype = fetch_ucirepo(id=31)
+            # data (as pandas dataframes)
+            data = covertype.data.features[['Elevation', 'Aspect', 'Slope', 'Horizontal_Distance_To_Hydrology',
+                                           'Vertical_Distance_To_Hydrology', 'Horizontal_Distance_To_Roadways',
+                                           'Hillshade_9am', 'Hillshade_Noon', 'Hillshade_3pm',
+                                           'Horizontal_Distance_To_Fire_Points']]
+            data['Cover_Type'] = covertype.data.targets
+            data['Id'] = data.index
+            data = data[['Id', 'Elevation', 'Aspect', 'Slope', 'Horizontal_Distance_To_Hydrology',
+                                           'Vertical_Distance_To_Hydrology', 'Horizontal_Distance_To_Roadways',
+                                           'Hillshade_9am', 'Hillshade_Noon', 'Hillshade_3pm',
+                                           'Horizontal_Distance_To_Fire_Points', 'Cover_Type']]
+            data = data.iloc[:30000]
+            super().__init__(primary_key_attribute='Id', target_attribute='Cover_Type', dataframe=data,
+                             correlated_attrs=correlations, name='covertype-sample')
 
 
 class Nursery(Dataset):
