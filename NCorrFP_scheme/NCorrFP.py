@@ -281,7 +281,8 @@ def create_hash_fingerprint(secret_key, recipient_id, fingerprint_bit_length):
     shift = 10
     # seed is 42 bit long
     seed = (secret_key << shift) + recipient_id
-    b = hashlib.blake2b(key=seed.to_bytes(6, 'little'), digest_size=int(fingerprint_bit_length / 8))
+    digest_size = int(fingerprint_bit_length / 8)
+    b = hashlib.blake2b(key=seed.to_bytes(6, 'little'), digest_size=digest_size)
     fingerprint = BitArray(hex=b.hexdigest())
     # convert to numpy array for consistency
     fingerprint = np.array(list(fingerprint.bin), dtype=int)
@@ -307,8 +308,9 @@ def decode_hash_fingerprint(fingerprint, secret_key, total_recipients):
     confidence = dict()
     for recipient_id in range(total_recipients):
         recipient_seed = (secret_key << shift) + recipient_id
+        digest_size = int(fingerprint_bit_length / 8)
         b = hashlib.blake2b(key=recipient_seed.to_bytes(6, 'little'),
-                            digest_size=int(fingerprint_bit_length / 8))
+                            digest_size=digest_size)
         recipient_fp = BitArray(hex=b.hexdigest())
         recipient_fp = recipient_fp.bin
         # convert to numpy array for consistency

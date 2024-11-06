@@ -16,39 +16,6 @@ from itertools import product
 from datetime import datetime
 
 
-def embed_fingerprints(data, params):
-    """
-    Embeds the fingerprints into the data for the experiments.
-    Args:
-        data (Dataset): Dataset instance of a dataset to fingerprint.
-        params (dict): A dictionary of fingerprinting parameters
-
-    Returns (string): path to the directory of experiment datasets
-
-    """
-    recipient_id = 0
-    # Generate all parameter combinations
-    combinations = list(product(*params.values()))
-    # Iterate through parameter combinations
-    for combination in combinations:
-        param = dict(zip(params.keys(), combination))
-
-        param_string = '_'.join(f"{key}{value}" for key, value in param.items()) + '_id{}'.format(recipient_id)
-        file_name = data.name + "_" + param_string + '.csv'
-        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), data.name + "-fp", file_name)
-
-        # skip the file if it already exists
-        if not os.path.exists(file_path):
-            scheme = NCorrFP(gamma=param['gamma'], fingerprint_bit_length=param['fingerprint_length'], k=param['k'],
-                             number_of_recipients=param['n_recipients'], fingerprint_code_type='hash')
-
-            scheme.insertion(data, secret_key=param['sk'], recipient_id=recipient_id,
-                             correlated_attributes=data.correlated_attrs, save_computation=True, outfile=file_path)
-        else:
-            print("- File already exists. {}".format(file_name))
-    return os.path.join(os.path.dirname(os.path.abspath(__file__)), data.name + "-fp")
-
-
 def vote_error_rate(votes, fingerprint):
     """
         Calculate the rate of wrong votes based on the fingerprint and votes array.
@@ -77,6 +44,18 @@ def vote_error_rate(votes, fingerprint):
 
 
 def effectiveness(dataset='covertype-sample', save_results='effectiveness'):
+    """
+    Perform analysis on effectiveness of NCorr-FP
+        1. Vote errors
+        2. Fingerprint bit errors (for the correct recipient)
+        3. True negatives confidence (matching with wrong fingerprints)
+    Args:
+        dataset: dataset name; it's expected that it's predefined in the module dataset
+        save_results: name extension for the file; in case it's None, the results are not saved into a file
+
+    Returns: pd.DataFrame of the effectiveness results
+
+    """
     print('NCorr-FP: Effectiveness.\nData: {}'.format(dataset))
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     save_results += f"_{dataset}_{timestamp}.csv"  # out file
@@ -94,16 +73,8 @@ def effectiveness(dataset='covertype-sample', save_results='effectiveness'):
               'k': [300, 500],
               'fingerprint_length': [64, 128, 256], #, 128, 256],
               'n_recipients': [20],
-              'sk': [100 + i for i in range(10)]}#10)]}  # #sk-s = #experiments
-    real_recipient_id = 0
-
-    # --- Fingerprint the datasets --- #
-    # the method will skip parameter settings that already exist
-    folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), dataset + '-fp')
-    # todo: uncomment!!
-    # embed_fingerprints(data, params)
-    # todo: remove
-    # exit()
+              'sk': [100 + i for i in range(10)], #10)]}  # #sk-s = #experiments
+              'id': [0]}
 
     # --- Initialise the results --- #
     results = {key: [] for key in list(params.keys()) + ['embedding_ratio', 'vote_error', 'tp', 'tn']}
@@ -114,6 +85,7 @@ def effectiveness(dataset='covertype-sample', save_results='effectiveness'):
     #   3. detection confidence for the wrong recipients
     combinations = list(product(*params.values()))
     # check if all the files are there
+    folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), dataset + '-fp')
     file_count = len([file for file in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, file))])
     if file_count < len(combinations):
         print("WARNING: It seems that some fingerprinted datasets are missing.")
@@ -121,7 +93,7 @@ def effectiveness(dataset='covertype-sample', save_results='effectiveness'):
     for combination in combinations:
         param = dict(zip(params.keys(), combination))
 
-        param_string = '_'.join(f"{key}{value}" for key, value in param.items()) + '_id{}'.format(real_recipient_id)
+        param_string = '_'.join(f"{key}{value}" for key, value in param.items())
         file_name = data.name + "_" + param_string + '.csv'
         file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), data.name + "-fp", file_name)
 
@@ -141,23 +113,24 @@ def effectiveness(dataset='covertype-sample', save_results='effectiveness'):
                                                                    primary_key='Id',
                                                                    correlated_attributes=data.correlated_attrs,
                                                                    original_columns=list(data.columns))
-            real_fp = scheme.create_fingerprint(recipient_id=real_recipient_id, secret_key=param['sk'])
+            real_fp = scheme.create_fingerprint(recipient_id=param['id'], secret_key=param['sk'])
 
             # record the parameters for the results
             for key, values in param.items():
                 results[key].append(values)
             results['embedding_ratio'].append(1.0 / param['gamma'])
+            results['recipient_id'].append(param['id'])
 
             # --- Count the rate of wrong votes (ideally, 0) --- #
             vote_error_rates = vote_error_rate(votes, real_fp)
             results['vote_error'].append(vote_error_rates)
 
             # --- Get the fingerprint extraction confidence for the correct recipient (ideally, 1.0) --- #
-            true_pos_confidence = suspect_probvec[real_recipient_id]
+            true_pos_confidence = suspect_probvec[param['id']]
             results['tp'].append(true_pos_confidence)
 
             # --- Get the avg confidence for all the wrong recipients (ideally, ~0.5) --- #
-            wrong_recipient_confs = [value for key, value in suspect_probvec.items() if key != real_recipient_id]
+            wrong_recipient_confs = [value for key, value in suspect_probvec.items() if key != param['id']]
             # true_neg_confidence = np.mean(wrong_recipient_confs)  # np.std(wrong_recipient_confs)
             results['tn'].append(wrong_recipient_confs)
 
