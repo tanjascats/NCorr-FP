@@ -180,7 +180,6 @@ def emd_between_dataframes(df1, df2):
     return emd_distances
 
 
-
 def ks_statistic_between_dataframes(df1, df2):
     """
     Calculate the Kolmogorov-Smirnov (KS) statistic for each column between two DataFrames.
@@ -206,6 +205,55 @@ def ks_statistic_between_dataframes(df1, df2):
         ks_statistics[column] = {'ks_statistic': ks_stat, 'p_value': p_value}
 
     return ks_statistics
+
+
+import pandas as pd
+import numpy as np
+from scipy.stats import gaussian_kde
+from math import sqrt
+
+
+def hellinger_distance_between_dataframes(df1, df2, num_points=100):
+    """
+    Calculate the Hellinger Distance for each column between two DataFrames.
+    A smaller distance (closer to 0) indicates similar distributions for a given feature, while values closer to 1 suggest more significant differences. This metric is particularly useful for comparing how well distributions align across two datasets.
+    Args:
+    - df1 (pd.DataFrame): First DataFrame.
+    - df2 (pd.DataFrame): Second DataFrame.
+    - num_points (int): Number of points for evaluating the KDE.
+
+    Returns:
+    - dict: Hellinger Distance values for each column.
+    """
+    # Ensure the DataFrames have the same columns
+    if not all(df1.columns == df2.columns):
+        raise ValueError("DataFrames must have the same columns to compute Hellinger Distance.")
+
+    hellinger_distances = {}
+
+    for column in df1.columns:
+        # Compute KDE for each column in both DataFrames
+        kde1 = gaussian_kde(df1[column], bw_method='scott')
+        kde2 = gaussian_kde(df2[column], bw_method='scott')
+
+        # Define a range for evaluation based on the combined range of both DataFrames
+        min_value = min(df1[column].min(), df2[column].min())
+        max_value = max(df1[column].max(), df2[column].max())
+        x = np.linspace(min_value, max_value, num_points)
+
+        # Evaluate the KDEs to get probability densities
+        p = kde1(x)
+        q = kde2(x)
+
+        # Normalize the densities to make them probability distributions
+        p /= p.sum()
+        q /= q.sum()
+
+        # Calculate Hellinger Distance
+        hellinger_dist = sqrt(0.5 * np.sum((np.sqrt(p) - np.sqrt(q)) ** 2))
+        hellinger_distances[column] = hellinger_dist
+
+    return hellinger_distances
 
 
 def fidelity(dataset='covertype-sample', save_results='fidelity'):
