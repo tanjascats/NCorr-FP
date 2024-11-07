@@ -6,20 +6,17 @@ import time
 import numbers
 import warnings
 from traceback import format_exc
-#from astropy.table import Table
 from joblib import Parallel
 
-#from sklearn.utils.validation import _check_fit_params, _num_samples
 from sklearn.utils.metaestimators import _safe_split
 from sklearn.utils import indexable
-#from sklearn.utils.fixes import delayed
 from sklearn.base import clone, is_classifier
 from sklearn.model_selection._validation import _score, _aggregate_score_dicts, _normalize_score_results, _insert_error_scores
 from sklearn.model_selection._split import check_cv
 from sklearn.exceptions import FitFailedWarning
 from sklearn.metrics._scorer import check_scoring, _check_multimetric_scoring
 
-from datasets import Dataset
+import datasets
 
 # returns the pandas structure of the dataset and its primary key
 def import_dataset(dataset_name):
@@ -140,12 +137,12 @@ def read_data(dataset, primary_key_attribute=None, target_attribute=None):
     '''
     relation = None
     if isinstance(dataset, str):  # assumed the path is given
-        relation = Dataset(path=dataset, target_attribute=target_attribute,
+        relation = datasets.Dataset(path=dataset, target_attribute=target_attribute,
                            primary_key_attribute=primary_key_attribute)
     elif isinstance(dataset, pd.DataFrame):  # assumed the pd.DataFrame is given
-        relation = Dataset(dataframe=dataset, target_attribute=target_attribute,
+        relation = datasets.Dataset(dataframe=dataset, target_attribute=target_attribute,
                            primary_key_attribute=primary_key_attribute)
-    elif isinstance(dataset, Dataset):
+    elif isinstance(dataset, datasets.Dataset):
         relation = dataset
     else:
         print('Error [utils._read_data]: Wrong type of input data: ' + str(type(dataset)))
@@ -210,7 +207,7 @@ def fp_fit_and_score(estimator, X_original, y_original, X_fingerprinted, y_finge
 
     # Adjust length of sample weights
     fit_params = fit_params if fit_params is not None else {}
-    fit_params = _check_fit_params(X_fingerprinted, fit_params, train_fingerprinted)
+    fit_params = datasets._check_fit_params(X_fingerprinted, fit_params, train_fingerprinted)
 
     if parameters is not None:
         # clone after setting parameters in case any parameters
@@ -313,7 +310,7 @@ def fp_fit_and_score(estimator, X_original, y_original, X_fingerprinted, y_finge
     if return_train_score:
         result["train_scores"] = train_scores
     if return_n_test_samples:
-        result["n_test_samples"] = _num_samples(X_test_original)
+        result["n_test_samples"] = datasets._num_samples(X_test_original)
     if return_times:
         result["fit_time"] = fit_time
         result["score_time"] = score_time
@@ -391,3 +388,56 @@ def fp_cross_val_score(estimator, X_original, y_original, X_fingerprint, y_finge
 #    tab = Table.read(path).to_pandas()
 #    # todo: in the latex version there might be necessary to remove some parts like \toprule
 #    return tab
+
+import pandas as pd
+import numpy as np
+from scipy.cluster.hierarchy import linkage, fcluster
+
+
+def extract_mutually_correlated_groups(corr_matrix, threshold):
+    """
+    Extract lists of mutually correlated attributes based on a correlation threshold.
+
+    Args:
+    - corr_matrix (pd.DataFrame): Correlation matrix of the dataset.
+    - threshold (float): Minimum correlation threshold to consider attributes as mutually correlated.
+
+    Returns:
+    - list of lists: Each inner list contains mutually correlated attributes.
+    """
+    # Mask diagonal and lower triangle to avoid redundant pairs
+    mask = np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
+
+    # Get pairs with absolute correlation above the threshold
+    correlated_pairs = [(corr_matrix.index[i], corr_matrix.columns[j])
+                        for i, j in zip(*np.where((np.abs(corr_matrix) > threshold) & mask))]
+
+    # Convert pairs to clusters using hierarchical clustering
+    if not correlated_pairs:
+        return []
+
+    # Initialize linkage and apply clustering on the correlated pairs
+    clusters = {}
+    for attr1, attr2 in correlated_pairs:
+        if attr1 in clusters:
+            clusters[attr1].append(attr2)
+        else:
+            clusters[attr1] = [attr2]
+
+    # Deduplicate and form lists of mutually correlated attributes
+    mutually_correlated_groups = []
+    seen = set()
+    for key, values in clusters.items():
+        group = set([key] + values)
+        if not group.intersection(seen):
+            mutually_correlated_groups.append(list(group))
+            seen.update(group)
+
+    return mutually_correlated_groups
+
+# Example usage:
+# Assuming 'correlation_matrix' is your DataFrame of correlations
+# correlation_matrix = pd.DataFrame(...)  # Replace with actual correlation matrix
+# threshold = 0.8
+# mutually_correlated_groups = extract_mutually_correlated_groups(correlation_matrix, threshold)
+# print("Mutually Correlated Groups:", mutually_correlated_groups)

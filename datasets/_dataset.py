@@ -3,14 +3,14 @@ import pandas as pd
 import os
 from sklearn.preprocessing import LabelEncoder
 from ucimlrepo import fetch_ucirepo
-
+import utils
 
 
 class Dataset(ABC):
     """
     Abstract class used to represent the dataset within the toolbox
     """
-    def __init__(self, target_attribute, path=None, dataframe=None, primary_key_attribute=None, correlated_attrs=None,
+    def __init__(self, target_attribute, path=None, dataframe=None, primary_key_attribute=None,
                  name=None):
         if path is None and dataframe is None:
             raise ValueError('Error defining a data set! Please provide either a path or a Pandas DataFrame to '
@@ -18,13 +18,16 @@ class Dataset(ABC):
 
         self.path = path
         self.dataframe = dataframe
-        self.correlated_attrs = correlated_attrs
         self.name = name
 
+        print(self.path)
         if self.path is not None and not isinstance(self.path, str):
             raise TypeError('Data set path must be a string value.')
         elif self.path is not None:
             self.dataframe = pd.read_csv(self.path)
+
+        corr_mtx = self.dataframe.drop(['Id'], axis=1).corr() if 'Id' in self.dataframe.columns else self.dataframe.corr()
+        self.correlated_attributes = utils.extract_mutually_correlated_groups(corr_mtx, threshold=0.55)
 
         if not isinstance(self.dataframe, pd.DataFrame):
             raise TypeError('Data frame must be type pandas.DataFrame')
@@ -177,6 +180,11 @@ class Dataset(ABC):
             self.number_of_rows, self.number_of_columns = self.dataframe.shape
         return self
 
+    def update_correlated_attributes(self, threshold):
+        corr_mtx = self.dataframe.drop(['Id'],
+                                       axis=1).corr() if 'Id' in self.dataframe.columns else self.dataframe.corr()
+        self.correlated_attributes = utils.extract_mutually_correlated_groups(corr_mtx, threshold=threshold)
+
 
 class GermanCredit(Dataset):
     def __init__(self):
@@ -205,13 +213,10 @@ class BreastCancer(Dataset):
 class CovertypeSample(Dataset):
     # A sample of 50,000 records and only integer features
     def __init__(self):
-        correlations = [['Hillshade_9am', 'Hillshade_3pm', 'Aspect', 'Hillshade_Noon'],
-                        ['Elevation', 'Horizontal_Distance_To_Roadways']]
-
         path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'covertype-sample.csv')
         if os.path.exists(path):
             super().__init__(path=path, primary_key_attribute='Id', target_attribute='Cover_Type',
-                             name='covertype-sample', correlated_attrs=correlations)
+                             name='covertype-sample')
         else:
             covertype = fetch_ucirepo(id=31)
             # data (as pandas dataframes)
@@ -227,7 +232,7 @@ class CovertypeSample(Dataset):
                                            'Horizontal_Distance_To_Fire_Points', 'Cover_Type']]
             data = data.iloc[:30000]
             super().__init__(primary_key_attribute='Id', target_attribute='Cover_Type', dataframe=data,
-                             correlated_attrs=correlations, name='covertype-sample')
+                             name='covertype-sample')
 
 
 class Nursery(Dataset):

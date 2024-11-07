@@ -11,6 +11,7 @@ import os
 from itertools import product
 from datetime import datetime
 import numpy as np
+from scipy.stats import entropy, gaussian_kde, wasserstein_distance, ks_2samp
 
 
 def get_delta_mean_std(df1, df2):
@@ -80,6 +81,133 @@ def extract_high_correlations(correlation_matrix, threshold=0.55):
     return high_corr_pairs
 
 
+def kl_divergence_kde(df1, df2, num_points=100):
+    """
+    Calculate KL divergence for each column between two DataFrames using Kernel Density Estimation.
+
+    Args:
+    - df1 (pd.DataFrame): First DataFrame (reference distribution).
+    - df2 (pd.DataFrame): Second DataFrame (comparison distribution).
+    - num_points (int): Number of points for evaluating the KDE.
+
+    Returns:
+    - dict: KL divergence values for each column.
+    """
+    kl_divergences = {}
+
+    for column in df1.columns:
+        # Compute KDE for each DataFrame's feature column
+        kde1 = gaussian_kde(df1[column], bw_method='scott')
+        kde2 = gaussian_kde(df2[column], bw_method='scott')
+
+        # Define a range for evaluation based on both DataFrames' data in the column
+        min_value = min(df1[column].min(), df2[column].min())
+        max_value = max(df1[column].max(), df2[column].max())
+        x = np.linspace(min_value, max_value, num_points)
+
+        # Evaluate the KDE for each dataset
+        p = kde1(x)
+        q = kde2(x)
+
+        # Add a small constant to avoid division by zero or log(0)
+        p += 1e-10
+        q += 1e-10
+
+        # Normalize the distributions
+        p /= p.sum()
+        q /= q.sum()
+
+        # Calculate KL divergence for this feature
+        kl_divergences[column] = entropy(p, q)
+
+    return kl_divergences
+
+
+def kl_divergence(df1, df2, bins=10):
+    """
+    Calculate KL divergence for each column between two DataFrames.
+
+    Args:
+    - df1 (pd.DataFrame): First DataFrame (reference distribution).
+    - df2 (pd.DataFrame): Second DataFrame (comparison distribution).
+    - bins (int): Number of bins for discretizing continuous data.
+
+    Returns:
+    - dict: KL divergence values for each column.
+    """
+    kl_divergences = {}
+
+    for column in df1.columns:
+        # Create histograms for each feature in both DataFrames
+        p, bin_edges = np.histogram(df1[column], bins=bins, density=True)
+        q, _ = np.histogram(df2[column], bins=bin_edges, density=True)
+
+        # Add a small constant to avoid division by zero or log(0)
+        p += 1e-10
+        q += 1e-10
+
+        # Normalize the distributions
+        p /= p.sum()
+        q /= q.sum()
+
+        # Calculate KL divergence for this feature
+        kl_divergences[column] = entropy(p, q)
+
+    return kl_divergences
+
+
+def emd_between_dataframes(df1, df2):
+    """
+    Calculate the Earth Mover's Distance (EMD) between corresponding columns in two DataFrames.
+    Lower EMD values indicate similar distributions, while higher values suggest greater differences.
+    Args:
+    - df1 (pd.DataFrame): First DataFrame.
+    - df2 (pd.DataFrame): Second DataFrame.
+
+    Returns:
+    - dict: EMD values for each column.
+    """
+    # Ensure the DataFrames have the same columns
+    if not all(df1.columns == df2.columns):
+        raise ValueError("DataFrames must have the same columns to compute EMD.")
+
+    emd_distances = {}
+
+    for column in df1.columns:
+        # Calculate EMD (Wasserstein distance) for each column
+        emd_distances[column] = wasserstein_distance(df1[column], df2[column])
+
+    return emd_distances
+
+
+
+def ks_statistic_between_dataframes(df1, df2):
+    """
+    Calculate the Kolmogorov-Smirnov (KS) statistic for each column between two DataFrames.
+    KS Statistic: Indicates the degree of difference between distributions (closer to 0 means more similar).
+    P-value: Tests the null hypothesis that both distributions are the same. A small p-value (e.g., <0.05) indicates a significant difference between the distributions.
+
+    Args:
+    - df1 (pd.DataFrame): First DataFrame.
+    - df2 (pd.DataFrame): Second DataFrame.
+
+    Returns:
+    - dict: KS statistic values for each column.
+    """
+    # Ensure the DataFrames have the same columns
+    if not all(df1.columns == df2.columns):
+        raise ValueError("DataFrames must have the same columns to compute KS statistic.")
+
+    ks_statistics = {}
+
+    for column in df1.columns:
+        # Calculate the KS statistic and p-value for each column
+        ks_stat, p_value = ks_2samp(df1[column], df2[column])
+        ks_statistics[column] = {'ks_statistic': ks_stat, 'p_value': p_value}
+
+    return ks_statistics
+
+
 def fidelity(dataset='covertype-sample', save_results='fidelity'):
     """
     Perform fidelity analysis of NCorr-FP
@@ -139,7 +267,7 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
                ['embedding_ratio', 'recipient_id', 'attribute', 'rel_delta_mean', 'rel_delta_std']}
     # Bivariate
     results_bivar = {key: [] for key in list(params.keys()) +
-               ['embedding_ratio', 'recipient_id'] + correlated_pairs_string}
+               ['embedding_ratio', 'recipient_id', 'accuracy'] + correlated_pairs_string}
 
     # --- Run the detection and count: --- #
     #   1. wrong votes
@@ -195,6 +323,11 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
             results_bivar['recipient_id'].append(param['id'])
 
             # add the stat results
+            # data accuracy (% changed values)
+            accuracy = (fingerprinted_data != data.dataframe).sum().sum() / \
+                       np.prod(data.dataframe.drop(['Id'], axis=1).shape)
+            results_bivar['accuracy'].append(accuracy)
+            # correlations
             for i, pair in enumerate(correlated_pairs):
                 fp_corr = fingerprinted_data[pair[0]].corr(fingerprinted_data[pair[1]])
                 delta_corr = abs((correlated_pairs[pair] - fp_corr)/correlated_pairs[pair])
