@@ -24,9 +24,27 @@ def generate_boneh_shaw_code(n_users, code_length, seed):
     for i in range(n_users):
         for j in range(code_length):
             # Each position in the code is set to 1 with a certain probability
+            # These are not BoSh
             codes[i, j] = 1 if np.random.rand() < 0.5 else 0
 
     return codes
+
+
+def generate_boneh_shaw_codebook(c, n_bits):
+    # Initialize the codebook with each user's code
+    codebook = []
+    for i in range(1, c + 1):
+        code = [0] * ((i - 1) * 1) + [1] * ((c - i) * 1)
+        codebook.append(code + [0] * (n_bits - len(code)))  # Pad to make each row n_bits long
+
+    # Convert to numpy array for easy manipulation
+    codebook = np.array(codebook)
+
+    # Randomly permute columns for added security
+    for i in range(n_bits):
+        np.random.shuffle(codebook[:, i])
+
+    return codebook
 
 
 def detect_colluders(codes, marked_code, k=1):
@@ -65,8 +83,8 @@ def detect_colluders(codes, marked_code, k=1):
 def example():
     # Example usage
     # Parameters that work together (10, 32, 20), (10, 64, 40)
-    n_users = 10
-    code_length = 64
+    n_users = 3
+    code_length = 16
     threshold = 40
 
     # Generate Boneh-Shaw codes
@@ -79,12 +97,12 @@ def example():
     marked_code = np.where(codes[0] == codes[1], codes[0], 1)  # Colluding two
 
     # Colluding three
-    marked_code = np.zeros(codes[0].shape, dtype=codes[0].dtype)
+#    marked_code = np.zeros(codes[0].shape, dtype=codes[0].dtype)
 
-    for i in range(len(codes[0])):
-        values = [codes[0][i], codes[2][i], codes[5][i]]
-        majority_value = mode(values)[0]
-        marked_code[i] = majority_value
+#    for i in range(len(codes[0])):
+#        values = [codes[0][i], codes[1][i], codes[2][i]]
+#        majority_value = mode(values)[0]
+#        marked_code[i] = majority_value
 
     # Detect colluders
     suspected_colluders = detect_colluders(codes, marked_code)#, threshold)
@@ -92,6 +110,12 @@ def example():
     print("Generated Boneh-Shaw Codes:\n", codes)
     print("Marked Code:\n", marked_code)
     print("Suspected Colluders:\n", suspected_colluders)
+
+    # Example usage
+    c = 9  # Number of users
+    n_bits = 9  # Length of the code
+    codebook = generate_boneh_shaw_codebook(c, n_bits)
+    print("Permuted Boneh-Shaw Codebook:\n", codebook)
 
 
 def experiment(seed, outfile):
