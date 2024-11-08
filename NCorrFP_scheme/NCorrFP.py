@@ -116,7 +116,10 @@ def sample_from_area(data, percent=0.1, num_samples=1, dense=True, plot=False, s
 
     """
     # Create a KDE based on the data (PDF estimation)
-    kde = gaussian_kde(data)
+    try:
+        kde = gaussian_kde(data)
+    except np.linalg.LinAlgError:  # when the data points are too similar to each other (or exactly the same)
+        return data[0]
 
     # Create a range of values to evaluate the PDF
     n_points = len(data) * 10  # dynamic num of points adds on runtime but does not improve estimations
@@ -434,7 +437,7 @@ class NCorrFP():
         if secret_key is not None:
             self.secret_key = secret_key
         # it is assumed that the first column in the dataset is the primary key
-        if isinstance(dataset_name, Dataset):
+        if isinstance(dataset_name, datasets.Dataset):
             relation = dataset_name.dataframe
             primary_key_name = dataset_name.get_primary_key_attribute()
         else:

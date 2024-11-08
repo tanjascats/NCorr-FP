@@ -69,12 +69,12 @@ def effectiveness(dataset='covertype-sample', save_results='effectiveness'):
     print(data.dataframe.head(3))
 
     # --- Define parameters --- #
-    params = {'gamma': [1, 64], #[2, 4, 8, 16, 32],
+    params = {'gamma': [2, 4, 8, 16, 32],
               'k': [300, 500],
-              'fingerprint_length': [64, 128, 256], #, 128, 256],
+              'fingerprint_length': [64, 128, 256, 512], #, 128, 256],
               'n_recipients': [20],
               'sk': [100 + i for i in range(10)], #10)]}  # #sk-s = #experiments
-              'id': [0]}
+              'id': [i for i in range(20)]}
 
     # --- Initialise the results --- #
     results = {key: [] for key in list(params.keys()) + ['embedding_ratio', 'vote_error', 'tp', 'tn']}
@@ -111,7 +111,7 @@ def effectiveness(dataset='covertype-sample', save_results='effectiveness'):
                              number_of_recipients=param['n_recipients'], fingerprint_code_type='hash')
             detected_fp, votes, suspect_probvec = scheme.detection(fingerprinted_data, secret_key=param['sk'],
                                                                    primary_key='Id',
-                                                                   correlated_attributes=data.correlated_attrs,
+                                                                   correlated_attributes=data.correlated_attributes,
                                                                    original_columns=list(data.columns))
             real_fp = scheme.create_fingerprint(recipient_id=param['id'], secret_key=param['sk'])
 
@@ -119,7 +119,6 @@ def effectiveness(dataset='covertype-sample', save_results='effectiveness'):
             for key, values in param.items():
                 results[key].append(values)
             results['embedding_ratio'].append(1.0 / param['gamma'])
-            results['recipient_id'].append(param['id'])
 
             # --- Count the rate of wrong votes (ideally, 0) --- #
             vote_error_rates = vote_error_rate(votes, real_fp)

@@ -8,6 +8,7 @@ from NCorrFP_scheme.NCorrFP import NCorrFP
 import argparse
 import os
 from itertools import product
+from pprint import pprint
 
 
 def embed_fingerprints(data, params):
@@ -36,7 +37,7 @@ def embed_fingerprints(data, params):
                              number_of_recipients=param['n_recipients'], fingerprint_code_type='hash')
 
             scheme.insertion(data, secret_key=param['sk'], recipient_id=param['id'],
-                             correlated_attributes=data.correlated_attrs, save_computation=True, outfile=file_path)
+                             correlated_attributes=data.correlated_attributes, save_computation=True, outfile=file_path)
         else:
             print("- File already exists. {}".format(file_name))
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), data.name + "-fp")
@@ -60,9 +61,12 @@ if __name__ == '__main__':
     # --- Define parameters --- #
     params = {'gamma': [2, 4, 8, 16, 32],
               'k': [300], #, 500],
-              'fingerprint_length': [512],#, 128, 256],  # , 128, 256],
+              'fingerprint_length': [128], #, 256, 512],#, 128, 256],  # , 128, 256],
               'n_recipients': [20],
-              'sk': [100 + i for i in range(10)],
-              'id': [0]} #i for i in range(20)]}  # + i for i in range(10)]}  # 10)]}  # #sk-s = #experiments
+              'sk': [100], # + i for i in range(10)],
+              'id': [i for i in range(20)]}  # + i for i in range(10)]}  # 10)]}  # #sk-s = #experiments
+    print('Starting the fingerprint embeddings with the following parameters: ')
+    pprint(params)
 
+    # --- Embed fingerprints --- #
     embed_fingerprints(data, params)

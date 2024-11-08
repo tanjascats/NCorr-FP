@@ -3,7 +3,6 @@ sys.path.insert(0, '../dissertation')  # make the script standalone for running 
 
 import datasets
 from datasets import CovertypeSample
-from NCorrFP_scheme.NCorrFP import NCorrFP
 
 import pandas as pd
 import argparse
@@ -12,6 +11,7 @@ from itertools import product
 from datetime import datetime
 import numpy as np
 from scipy.stats import entropy, gaussian_kde, wasserstein_distance, ks_2samp
+from math import sqrt
 
 
 def get_delta_mean_std(df1, df2):
@@ -156,7 +156,7 @@ def kl_divergence(df1, df2, bins=10):
     return kl_divergences
 
 
-def emd_between_dataframes(df1, df2):
+def emd(df1, df2):
     """
     Calculate the Earth Mover's Distance (EMD) between corresponding columns in two DataFrames.
     Lower EMD values indicate similar distributions, while higher values suggest greater differences.
@@ -180,7 +180,7 @@ def emd_between_dataframes(df1, df2):
     return emd_distances
 
 
-def ks_statistic_between_dataframes(df1, df2):
+def ks_statistic(df1, df2):
     """
     Calculate the Kolmogorov-Smirnov (KS) statistic for each column between two DataFrames.
     KS Statistic: Indicates the degree of difference between distributions (closer to 0 means more similar).
@@ -207,13 +207,7 @@ def ks_statistic_between_dataframes(df1, df2):
     return ks_statistics
 
 
-import pandas as pd
-import numpy as np
-from scipy.stats import gaussian_kde
-from math import sqrt
-
-
-def hellinger_distance_between_dataframes(df1, df2, num_points=100):
+def hellinger_distance(df1, df2, num_points=100):
     """
     Calculate the Hellinger Distance for each column between two DataFrames.
     A smaller distance (closer to 0) indicates similar distributions for a given feature, while values closer to 1 suggest more significant differences. This metric is particularly useful for comparing how well distributions align across two datasets.
@@ -301,18 +295,19 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
     correlated_pairs_string = ["-".join(list(a)) for a in list(correlated_pairs.keys())]
 
     # --- Define parameters --- #
-    params = {'gamma': [2, 4, 8, 16, 32],
+    params = {'gamma': [2, 4, 8, 16, 32], #, 4, 8, 16, 32],
               'k': [300, 500],
-              'fingerprint_length': [64, 128, 256], #, 64 128, 256],
+              'fingerprint_length': [64, 128, 256, 512], #, 64 128, 256],
               'n_recipients': [20],
               'sk': [100 + i for i in range(10)], #10)]}  # #sk-s = #experiments
-              'id': [i for i in range(20)]}
+              'id': [i for i in range(20)]} #,i for i in range(20)]}
 
     # --- Initialise the results --- #
     # todo: add all metrics
     # Univariate
     results_univar = {key: [] for key in list(params.keys()) +
-               ['embedding_ratio', 'recipient_id', 'attribute', 'rel_delta_mean', 'rel_delta_std']}
+                      ['embedding_ratio', 'recipient_id', 'attribute', 'rel_delta_mean', 'rel_delta_std',
+                       'hellinger_distance', 'kl_divergence', 'emd', 'ks', 'p_value']}
     # Bivariate
     results_bivar = {key: [] for key in list(params.keys()) +
                ['embedding_ratio', 'recipient_id', 'accuracy'] + correlated_pairs_string}
@@ -348,10 +343,13 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
 
             # todo: do stuff on fingerprinted data
             # -- Calculate delta mean and std for each attribute --- #
-            stats_fp = get_delta_mean_std(fingerprinted_data, data.dataframe)
-            print(stats_fp)
-            print(stats_fp['rel_delta_mean']['Slope'])
-            for attribute in stats_fp.index:
+            delta_mean_std = get_delta_mean_std(fingerprinted_data, data.dataframe)
+            # -- Calculate: (i) hellinger dist, (ii) kl divergence, (iii) emd, (iv) ks
+            hellinger_dist = hellinger_distance(data.dataframe, fingerprinted_data)
+            kl_div = kl_divergence_kde(data.dataframe, fingerprinted_data)
+            emd_score = emd(data.dataframe, fingerprinted_data)
+            ks = ks_statistic(data.dataframe, fingerprinted_data)  # returns ks and p-value
+            for attribute in delta_mean_std.index:
                 # record the parameters for the results
                 for key, values in param.items():
                     results_univar[key].append(values)
@@ -360,8 +358,14 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
 
                 # add the stat results
                 results_univar['attribute'].append(attribute)
-                results_univar['rel_delta_mean'].append(stats_fp['rel_delta_mean'][attribute])
-                results_univar['rel_delta_std'].append(stats_fp['rel_delta_std'][attribute])
+                results_univar['rel_delta_mean'].append(delta_mean_std['rel_delta_mean'][attribute])
+                results_univar['rel_delta_std'].append(delta_mean_std['rel_delta_std'][attribute])
+
+                results_univar['hellinger_distance'].append(hellinger_dist[attribute])
+                results_univar['kl_divergence'].append(kl_div[attribute])
+                results_univar['emd'].append(emd_score[attribute])
+                results_univar['ks'].append(ks[attribute]['ks_statistic'])
+                results_univar['p_value'].append(ks[attribute]['p_value'])
 
             # -- Calculated delta corr for highly correlated pairs -- #
             # record the parameters for the results
