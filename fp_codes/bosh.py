@@ -39,7 +39,7 @@ def generate_random_codes(n_users, code_length):
     return codes
 
 
-def generate_bosh_codes(n_users, code_length):
+def generate_bosh_codes(n_users, code_length, secret_key):
     """
         Generate Boneh-Shaw (BoSh) fingerprint codes for n_users.
 
@@ -64,9 +64,9 @@ def generate_bosh_codes(n_users, code_length):
         codebook[i, :i * r] = 0
         codebook[i, i * r:] = 1
 
-    # Apply a random permutation to each codeword
+    # Apply the same random permutation to each codeword
     for i in range(n_users):
-        np.random.seed(i)
+        np.random.seed(secret_key)
         np.random.shuffle(codebook[i])
 
     return codebook
@@ -105,6 +105,7 @@ def detect_colluders(codes, pirate_fingerprint, t=1):
     Returns:
     list: List of suspected colluders (user indices). List of suspicion scores.
     """
+    # todo: this works but could be imporoved by introducing probabilities
     n_users, code_length = codes.shape
     suspicion_scores = np.zeros(n_users)
 
@@ -151,15 +152,16 @@ def example():
     n_users = 20
     code_length = 64
     colluders = [1, 2]  # These users collude to create a pirate fingerprint
+    secret_key = 101
 
     # Generate BoSh codes
-    codes = generate_bosh_codes(n_users, code_length)
+    codes = generate_bosh_codes(n_users, code_length, secret_key)
     print("Generated BoSh Codes:\n", codes)
     print("Min distance between any two codes: ", min_diff(codes))
 
     # Generate a pirate fingerprint by colluders
     pirate_fingerprint = generate_pirate_fingerprint(codes, colluders)
-    print("Pirate Fingerprint:\n", pirate_fingerprint)
+    print("Pirate Fingerprint (created by colluding majority voting):\n", pirate_fingerprint)
 
     # Try to detect one user
     suspect, similarity_scores = detect_recipient(codes, pirate_fingerprint)

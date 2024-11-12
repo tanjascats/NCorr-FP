@@ -31,37 +31,60 @@ def collude_2_datasetes_by_avg(dataset_path_1=None, dataset_path_2=None):
     """
     fp_data_1 = pd.read_csv(dataset_path_1)
     fp_data_2 = pd.read_csv(dataset_path_2)
-    # Merge the datasets on the 'Id' column to align the rows
-    merged = pd.merge(fp_data_1, fp_data_2,
-                      on="Id", suffixes=('_df1', '_df2'))
-    print('Attack: collusion of 2 by avg.')
-    # Identify differences by comparing the corresponding columns
-    differences = (merged['X_df1'] != merged['X_df2']) | \
-                  (merged['Y_df1'] != merged['Y_df2']) | \
-                  (merged['Z_df1'] != merged['Z_df2'])
-    # Count the total number of differing rows
-    total_differences = differences.sum()
-    print(f"Total differences: {total_differences}")
-    # Create a new dataset that averages the differences
-    merged['X'] = merged[['X_df1', 'X_df2']].mean(axis=1)
-    merged['Y'] = merged[['Y_df1', 'Y_df2']].mean(axis=1)
-    merged['Z'] = merged[['Z_df1', 'Z_df2']].mean(axis=1)
-    final_merged_df = merged[['Id', 'X', 'Y', 'Z']].round(0).astype(int)
 
-    # Save the final merged DataFrame to CSV
-    # final_merged_df.to_csv(output_file_path, index=False)
-    # print(f"Merged dataset saved to: {output_file_path}")
+    # Check if both dataframes have the same shape and columns
+    if fp_data_1.shape != fp_data_2.shape or not (fp_data_1.columns == fp_data_2.columns).all():
+        raise ValueError("Datasets must have the same shape and column names")
 
-    # Check the detection on merged dataset
-#    suspect = scheme.detection(final_merged_df, secret_key=101, primary_key='Id',
-#                               correlated_attributes=correlated_attributes,
-#                               original_columns=["X", 'Y', 'Z'])
-#    sus = tardos_codes.check_exact_matching(list_to_string(scheme.detected_fp), 101, scheme.number_of_recipients)
-#    print(fingerprints)
-#    print(list_to_string(scheme.detected_fp))
-#    print("Exact match? ", sus)
-    final_merged_df.to_csv('attacks/collusion/out_data/merged_dataset.csv', index=False)
-    return final_merged_df
+    # Calculate the merged DataFrame by averaging only where values disagree
+    merged_df = fp_data_1.copy()
+    disagreement_mask = fp_data_1 != fp_data_2  # True where values disagree
+    averaged_values = (fp_data_1 + fp_data_2) / 2  # Average the values
+
+    # Assign averaged values, casting them to the original data type in df1
+    for column in fp_data_1.columns:
+        if disagreement_mask[column].any():  # Only process if there are disagreements in the column
+            merged_df.loc[disagreement_mask[column], column] = averaged_values[column].astype(fp_data_1[column].dtype)
+
+    return merged_df
+
+
+def collude_datasetes_by_avg(dataset_paths):
+
+    """
+    Merges multiple DataFrames by averaging values where they disagree among any of the provided DataFrames.
+
+    Args:
+        *dataframes (pd.DataFrame): Arbitrary number of DataFrames to compare and merge.
+
+    Returns:
+        pd.DataFrame: Merged DataFrame with averaged values where any disagreements occur.
+    """
+    if len(dataset_paths) < 2:
+        raise ValueError("At least two DataFrames are required for comparison.")
+
+    dataframes = [pd.read_csv(ds) for ds in dataset_paths]
+
+    # Check if all DataFrames have the same shape and columns
+    ref_shape = dataframes[0].shape
+    ref_columns = dataframes[0].columns
+    if not all(df.shape == ref_shape and df.columns.equals(ref_columns) for df in dataframes):
+        raise ValueError("All DataFrames must have the same shape and columns.")
+
+    # Stack all DataFrames along a new axis to allow comparison across all values
+    stacked = np.stack([df.values for df in dataframes])
+
+    # Calculate where disagreements occur by checking if all values along the new axis are the same
+    disagreements = np.any(stacked != stacked[0, :, :], axis=0)
+
+    # Calculate the mean along the new axis for all positions
+    mean_values = np.mean(stacked, axis=0)
+
+    # Create the merged DataFrame
+    merged_df = pd.DataFrame(stacked[0], columns=ref_columns).copy()
+    merged_df.values[disagreements] = mean_values[disagreements]
+
+    return merged_df
 
 
 def collude_3_datasets_by_avg(dataset_path_1, dataset_path_2, dataset_path_3):

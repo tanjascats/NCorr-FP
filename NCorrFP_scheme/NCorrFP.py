@@ -331,7 +331,7 @@ class NCorrFP():
 
     def __init__(self, gamma=1, xi=1, fingerprint_bit_length=32, number_of_recipients=100, distance_based=False,
                  d=0, k=50, distance_metric_discrete="hamming", distance_metric_continuous='minkowski',
-                 fingerprint_code_type='tardos'):
+                 fingerprint_code_type='hash'):
         """
 
         Args:
@@ -383,10 +383,10 @@ class NCorrFP():
             fingerprint = create_hash_fingerprint(secret_key=secret_key,
                                     fingerprint_bit_length=self.fingerprint_bit_length,
                                     recipient_id=recipient_id)
-        elif self.fingerprint_code_type == 'tardos':
-            fingerprint = tardos_codes.generate_tardos_code(secret_key=secret_key,
-                                                            recipient_id=recipient_id,
-                                                            fp_len=self.fingerprint_bit_length)
+#        elif self.fingerprint_code_type == 'tardos':
+#            fingerprint = tardos_codes.generate_tardos_code(secret_key=secret_key,
+#                                                            recipient_id=recipient_id,
+#                                                            fp_len=self.fingerprint_bit_length)
         else:
             fingerprint = None
             exit('Please specify valid type of fingerprint code ({})'.format(__valid_types))
@@ -726,6 +726,40 @@ class NCorrFP():
             print("Runtime: " + str(round(runtime, 2)) + " sec.")
         # todo: define a return statement -- just the most likely recipient? Probability vec?
         return fingerprint_template, count, suspects
+
+    def detect_colluders(self, pirate_fingerprint, secret_key, threshold=1):
+        """
+        Detect colluders by calculating suspicion scores based on the pirate fingerprint.
+
+        Args:
+        codes (np.ndarray): Matrix of fingerprint codes for all users.
+        pirate_fingerprint (np.ndarray): The pirate fingerprint obtained from collusion.
+        t (float): The factor for standard deviation affecting the threshold for accusation. Larger values lead to more confidence.
+
+        Returns:
+        list: List of suspected colluders (user indices). List of suspicion scores.
+        """
+        codebook = np.array([self.create_fingerprint(recipient_id=i, secret_key=secret_key, show_messages=False)
+                             for i in range(self.number_of_recipients)])
+
+        n_users, code_length = codebook.shape
+        suspicion_scores = np.zeros(n_users)
+
+        # Calculate suspicion score for each user
+        for i in range(n_users):
+            for j in range(code_length):
+                if codebook[i][j] == pirate_fingerprint[j]:
+                    suspicion_scores[i] += np.log(2)  # Positive contribution for matching bit
+                else:
+                    suspicion_scores[i] += np.log(1)  # No contribution for non-matching bit (log(1) = 0)
+
+        threshold = suspicion_scores.mean() + threshold * suspicion_scores.std()
+
+        # Accuse users whose suspicion score exceeds the threshold
+        suspected_colluders = [i for i, score in enumerate(suspicion_scores) if score >= threshold]
+
+        return suspected_colluders, suspicion_scores
+
 
     def demo_insertion(self, dataset_name, recipient_id, secret_key, primary_key_name=None, outfile=None,
                        correlated_attributes=None):
