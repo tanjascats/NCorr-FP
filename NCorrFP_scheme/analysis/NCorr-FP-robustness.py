@@ -1,18 +1,12 @@
-import random
 import sys
 sys.path.insert(0, '../dissertation')  # make the script standalone for running on server
 
-import datasets
 from datasets import CovertypeSample
-from NCorrFP_scheme.NCorrFP import NCorrFP
 
-import pandas as pd
 import argparse
-import os
 from itertools import product
 from datetime import datetime
-from fp_codes.bosh import *
-from attacks.collusion.base_collusion import *
+from attacks.collusion import *
 
 
 def collusion(dataset='covertype-sample', save_results='robustness-collusion'):
@@ -40,11 +34,11 @@ def collusion(dataset='covertype-sample', save_results='robustness-collusion'):
     # --- Define parameters --- #
     fp_params = {'gamma': [32],
                  'k': [300],
-                 'fingerprint_length': [64],# 128
+                 'fingerprint_length': [128],# 128
                  'n_recipients': [20],
                  'sk': [100]}  # 128
-    collusion_params = {'n_colluders': [2, 3, 5],
-                        'strategy': ['avg'],  # random (where they just choose a random new value)#
+    collusion_params = {'n_colluders': [2, 3, 5, 10],
+                        'strategy': ['avg', 'random', 'random_flip'],  # random (where they just choose a random new value)#
                         'threshold': [1]} # 1.2, 0.8], for this I dont need to run it multiple times, just save the accusation scores
     n_experiments = 10
     # --- Initialise the results --- #
@@ -80,7 +74,14 @@ def collusion(dataset='covertype-sample', save_results='robustness-collusion'):
                     # todo append the results with colluder ids
 
                 # Run collusion
-                colluded_ds = collude_datasetes_by_avg(files_to_collude)
+                if c_param['strategy'] == 'avg':
+                    colluded_ds = collude_datasetes_by_avg(files_to_collude)
+                elif c_param['strategy'] == 'random':
+                    colluded_ds = collude_datasetes_by_random(files_to_collude)
+                elif c_param['strategy'] == 'random_flip':
+                    colluded_ds = collude_datasets_by_random_and_flipping(files_to_collude)
+                else:
+                    exit(f"Invalid collusion strategy ({collusion_params['strategy']})")
 
                 # Run detection
                 scheme = NCorrFP(gamma=param['gamma'], fingerprint_bit_length=param['fingerprint_length'], k=param['k'],
@@ -102,8 +103,7 @@ def collusion(dataset='covertype-sample', save_results='robustness-collusion'):
                 results['colluders'].append(colluders)
                 results['accusation_scores'].append(scores)
 
-                # Record the collusion measures
-                # todo append the results
+                # --- Record the collusion measures --- #
                 # --- Number of total accused colluders --- #
                 print(f'Total accusations: {len(accusation)}')
                 results['total_accusations'].append(len(accusation))
@@ -131,8 +131,6 @@ def collusion(dataset='covertype-sample', save_results='robustness-collusion'):
                 print(f'Recall: {recall}')
                 results['recall'].append(recall)
 
-            break
-
     results_frame = pd.DataFrame(results)
     if save_results is not None:
         results_frame.to_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), save_results), index=False)
@@ -148,4 +146,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     collusion(args.dataset)
-    # todo: 1-user attacks
+    # todo: 1-user attacksc

@@ -730,6 +730,7 @@ class NCorrFP():
     def detect_colluders(self, pirate_fingerprint, secret_key, threshold=1):
         """
         Detect colluders by calculating suspicion scores based on the pirate fingerprint.
+        todo: - Weight the Matches Based on Probability: For each bit in the detected fingerprint, calculate the probability that this bit would have been contributed by a given user in the collusion. Use a scoring function where each matched bit contributes to a user's suspicion score, weighted by its probability.
 
         Args:
         codes (np.ndarray): Matrix of fingerprint codes for all users.
@@ -1028,10 +1029,10 @@ class NCorrFP():
         # print(count)
 
         recipient_no = self.detect_potential_traitor(fingerprint_template, secret_key)
-        if recipient_no >= 0:
-            print("Fingerprint belongs to Recipient " + str(recipient_no))
-        else:
-            print("None suspected.")
+        #if recipient_no >= 0:
+        #    print("Fingerprint belongs to Recipient " + str(recipient_no))
+        #else:
+        #    print("None suspected.")
         runtime = time.time() - start
         if runtime < 1:
             print("Runtime: " + str(int(runtime) * 1000) + " ms.")

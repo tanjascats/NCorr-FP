@@ -55,7 +55,7 @@ def collude_datasetes_by_avg(dataset_paths):
     Merges multiple DataFrames by averaging values where they disagree among any of the provided DataFrames.
 
     Args:
-        *dataframes (pd.DataFrame): Arbitrary number of DataFrames to compare and merge.
+        dataset_paths (list): Arbitrary number of paths to datasets to collude.
 
     Returns:
         pd.DataFrame: Merged DataFrame with averaged values where any disagreements occur.
@@ -83,6 +83,105 @@ def collude_datasetes_by_avg(dataset_paths):
     # Create the merged DataFrame
     merged_df = pd.DataFrame(stacked[0], columns=ref_columns).copy()
     merged_df.values[disagreements] = mean_values[disagreements]
+
+    return merged_df
+
+
+def collude_datasetes_by_random(dataset_paths):
+
+    """
+    Merges multiple DataFrames by replacing disagreements with random values from the attribute's domain.
+
+    Args:
+        dataset_paths (list): Arbitrary number of paths to datasets to collude.
+
+    Returns:
+        pd.DataFrame: Merged DataFrame with random new values where any disagreements occur.
+    """
+    if len(dataset_paths) < 2:
+        raise ValueError("At least two DataFrames are required for comparison.")
+
+    dataframes = [pd.read_csv(ds) for ds in dataset_paths]
+
+    # Check if all DataFrames have the same shape and columns
+    ref_shape = dataframes[0].shape
+    ref_columns = dataframes[0].columns
+    if not all(df.shape == ref_shape and df.columns.equals(ref_columns) for df in dataframes):
+        raise ValueError("All DataFrames must have the same shape and columns.")
+
+    # Stack all DataFrames along a new axis to allow comparison across all values
+    stacked = np.stack([df.values for df in dataframes])
+
+    # Calculate where disagreements occur by checking if all values along the new axis are the same
+    disagreements = np.any(stacked != stacked[0, :, :], axis=0)
+
+    # Create the merged DataFrame
+    merged_df = pd.DataFrame(stacked[0], columns=ref_columns).copy()
+
+    # Replace disagreements with random values from the attribute's domain
+    for col in ref_columns:
+        if disagreements[:, ref_columns.get_loc(col)].any():
+            # Get unique values for the attribute across all DataFrames (the domain)
+            attribute_domain = np.unique(stacked[:, :, ref_columns.get_loc(col)])
+
+            # Generate random values from the domain for the disagreement positions
+            random_values = np.random.choice(attribute_domain, size=disagreements[:, ref_columns.get_loc(col)].sum())
+
+            # Insert random values in positions where disagreements occur
+            merged_df.loc[disagreements[:, ref_columns.get_loc(col)], col] = random_values
+
+    return merged_df
+
+
+def collude_datasets_by_random_and_flipping(dataset_paths):
+    """
+        Merges multiple DataFrames by replacing disagreements with random values from the attribute's domain.
+        Additionally, modifies a random selection of values in the merged DataFrame to random values from their respective attribute domains.
+
+        Args:
+            dataset_paths (list): Arbitrary number of paths to datasets to collude.
+
+        Returns:
+            pd.DataFrame: Merged DataFrame with disagreements and additional random modifications.
+        """
+    if len(dataset_paths) < 2:
+        raise ValueError("At least two DataFrames are required for comparison.")
+
+    dataframes = [pd.read_csv(ds) for ds in dataset_paths]
+
+    # Check if all DataFrames have the same shape and columns
+    ref_shape = dataframes[0].shape
+    ref_columns = dataframes[0].columns
+    if not all(df.shape == ref_shape and df.columns.equals(ref_columns) for df in dataframes):
+        raise ValueError("All DataFrames must have the same shape and columns.")
+
+    # Stack all DataFrames along a new axis to allow comparison across all values
+    stacked = np.stack([df.values for df in dataframes])
+
+    # Identify disagreements
+    disagreements = np.any(stacked != stacked[0, :, :], axis=0)
+    num_disagreements = np.sum(disagreements)
+
+    # Create the merged DataFrame and replace disagreements with random values
+    merged_df = pd.DataFrame(stacked[0], columns=ref_columns).copy()
+    for col in ref_columns:
+        if disagreements[:, ref_columns.get_loc(col)].any():
+            attribute_domain = np.unique(stacked[:, :, ref_columns.get_loc(col)])
+            random_values = np.random.choice(attribute_domain, size=disagreements[:, ref_columns.get_loc(col)].sum())
+            merged_df.loc[disagreements[:, ref_columns.get_loc(col)], col] = random_values
+
+    # Randomly modify additional values in the DataFrame
+    if num_disagreements > 0:
+        rows, cols = merged_df.shape
+        total_elements = rows * cols
+
+        # Select random positions for additional modifications
+        random_indices = np.random.choice(total_elements, size=num_disagreements, replace=False)
+        for index in random_indices:
+            row, col_idx = divmod(index, cols)
+            col_name = merged_df.columns[col_idx]
+            attribute_domain = np.unique(stacked[:, :, col_idx])
+            merged_df.iloc[row, col_idx] = np.random.choice(attribute_domain)
 
     return merged_df
 

@@ -59,7 +59,7 @@ if __name__ == '__main__':
     print(data.dataframe.head(3))
 
     # --- Define parameters --- #
-    params = {'gamma': [2, 4, 8, 16, 32],
+    params = {'gamma': [32], #][2, 4, 8, 16, 32],
               'k': [300], #, 500],
               'fingerprint_length': [128], #, 256, 512],#, 128, 256],  # , 128, 256],
               'n_recipients': [20],
