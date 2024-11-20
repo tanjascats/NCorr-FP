@@ -32,7 +32,20 @@ The upper row represents the votes for bit 0 per bit-position, and the lower row
 
 See the full demo at: [NCorrFP-demo-continuous.ipynb](https://github.com/tanjascats/NCorr-FP/blob/main/NCorrFP-demo-continuous.ipynb)
 
-Author: Tanja Sarcevic
+
+## Citation
+
+If you use this code in your research, cite it as follows:
+```
+@misc{NCorr-FP,
+  title={Neighbourhood- and Correlation-based Fingerprinting},
+  author={Tanja Šarčević and Andreas Rauber and Rudolf Mayer},
+  year={2024},
+  url={https://github.com/tanjascats/NCorr-FP}
+}
+```
+
+Author: Tanja Šarčević
 
 ## References: 
 [1] Yilmaz, E. and Ayday, E., 2020. Collusion-resilient probabilistic fingerprinting scheme for correlated data. arXiv preprint arXiv:2001.09555.\
