@@ -26,7 +26,7 @@ For example, below we show how a value distribution in similar records (the _nei
 ![demo-sampling](https://github.com/tanjascats/NCorr-FP/blob/main/figures/demo.png)
 
 During the fingerprint detection, this process is reversed to decode the embedded bit. Hence, if the value falls in the low-density area, the embedded bit is assumed to be 0, otherwise 1. These extracted bit assumptions are added to the voting system. Each of the _L_ fingerprint bit gets assigned votes for the bit being 0 or 1. For _L_=16, the final voting might look like this:
-![demo-votes](https://github.com/tanjascats/NCorr-FP/blob/main/figures/demo-votes.png)
+![demo-votes](figures/demo-votes.png)
 
 The upper row represents the votes for bit 0 per bit-position, and the lower row represents the votes for bit 1 per bit-position. According to the majority vote, the fingerprint is decided to be the 16-bit sequence: 0100000001100100 which in a correct setup is the exact sequence associated to the recipient of the data copy. In reality, the fingerprint sequences are much longer (>100-bit) to ensure a small mutual overlap.
 
