@@ -296,8 +296,8 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
 
     # --- Define parameters --- #
     params = {'gamma': [2, 4, 8, 16, 32], #, 4, 8, 16, 32],
-              'k': [300, 500],
-              'fingerprint_length': [64, 128, 256, 512], #, 64 128, 256],
+              'k': [300],#, 500],
+              'fingerprint_length': [64], #, 128, 256, 512], #, 64 128, 256],
               'n_recipients': [20],
               'sk': [100 + i for i in range(10)], #10)]}  # #sk-s = #experiments
               'id': [i for i in range(20)]} #,i for i in range(20)]}

@@ -2,7 +2,7 @@ import sys
 sys.path.insert(0, '../dissertation')  # make the script standalone for running on server
 
 import datasets
-from datasets import CovertypeSample
+from datasets import CovertypeSample, CovertypeInt
 from NCorrFP_scheme.NCorrFP import NCorrFP
 
 import argparse
@@ -54,17 +54,20 @@ if __name__ == '__main__':
     data = None
     if args.dataset == 'covertype-sample':
         data = CovertypeSample()
+    elif args.dataset == 'covertype-int':
+        data = CovertypeInt()
     if data is None:
         exit('Please provide a valid dataset name ({})'.format(datasets.__all__))
     print(data.dataframe.head(3))
 
     # --- Define parameters --- #
-    params = {'gamma': [32], #][2, 4, 8, 16, 32],
-              'k': [300], #, 500],
-              'fingerprint_length': [128], #, 256, 512],#, 128, 256],  # , 128, 256],
+    params = {'gamma': [2],#, 4, 8, 16, 32],
+              'k': [1000], #, 500],
+              'fingerprint_length': [512], #, 256, 512],#, 128, 256],  # , 128, 256],
               'n_recipients': [20],
-              'sk': [100], # + i for i in range(10)],
-              'id': [i for i in range(20)]}  # + i for i in range(10)]}  # 10)]}  # #sk-s = #experiments
+              'sk': [100],# + i for i in range(10)],
+              'id': [0]#i for i in range(20)]  # + i for i in range(10)]}  # 10)]}  # #sk-s = #experiments
+              }
     print('Starting the fingerprint embeddings with the following parameters: ')
     pprint(params)
 

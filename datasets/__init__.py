@@ -7,4 +7,5 @@ __all__ = ['Dataset',
            'Adult',
            'Mushrooms',
            'Nursery',
-           'CovertypeSample']
+           'CovertypeSample',
+           'CovertypeInt']

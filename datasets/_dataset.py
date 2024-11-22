@@ -20,7 +20,6 @@ class Dataset(ABC):
         self.dataframe = dataframe
         self.name = name
 
-        print(self.path)
         if self.path is not None and not isinstance(self.path, str):
             raise TypeError('Data set path must be a string value.')
         elif self.path is not None:
@@ -231,6 +230,30 @@ class CovertypeSample(Dataset):
                                            'Hillshade_9am', 'Hillshade_Noon', 'Hillshade_3pm',
                                            'Horizontal_Distance_To_Fire_Points', 'Cover_Type']]
             data = data.iloc[:30000]
+            super().__init__(primary_key_attribute='Id', target_attribute='Cover_Type', dataframe=data,
+                             name='covertype-sample')
+
+
+class CovertypeInt(Dataset):
+    # The 10 integer features of the Forest Covertype dataset + the target
+    def __init__(self):
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'covertype-int.csv')
+        if os.path.exists(path):
+            super().__init__(path=path, primary_key_attribute='Id', target_attribute='Cover_Type',
+                             name='covertype-int')
+        else:
+            covertype = fetch_ucirepo(id=31)
+            # data (as pandas dataframes)
+            data = covertype.data.features[['Elevation', 'Aspect', 'Slope', 'Horizontal_Distance_To_Hydrology',
+                                            'Vertical_Distance_To_Hydrology', 'Horizontal_Distance_To_Roadways',
+                                            'Hillshade_9am', 'Hillshade_Noon', 'Hillshade_3pm',
+                                            'Horizontal_Distance_To_Fire_Points']]
+            data['Cover_Type'] = covertype.data.targets
+            data['Id'] = data.index
+            data = data[['Id', 'Elevation', 'Aspect', 'Slope', 'Horizontal_Distance_To_Hydrology',
+                         'Vertical_Distance_To_Hydrology', 'Horizontal_Distance_To_Roadways',
+                         'Hillshade_9am', 'Hillshade_Noon', 'Hillshade_3pm',
+                         'Horizontal_Distance_To_Fire_Points', 'Cover_Type']]
             super().__init__(primary_key_attribute='Id', target_attribute='Cover_Type', dataframe=data,
                              name='covertype-sample')
 

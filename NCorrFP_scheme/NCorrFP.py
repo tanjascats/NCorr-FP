@@ -12,6 +12,7 @@ import timeit
 
 from fp_codes import tardos
 from utils import *
+from fp_codes.tardos import *
 
 _MAXINT = 2**31 - 1
 
@@ -118,7 +119,7 @@ def sample_from_area(data, percent=0.1, num_samples=1, dense=True, plot=False, s
     # Create a KDE based on the data (PDF estimation)
     try:
         kde = gaussian_kde(data)
-    except np.linalg.LinAlgError:  # when the data points are too similar to each other (or exactly the same)
+    except np.linalg.LinAlgError as e:  # when the data points are too similar to each other (or exactly the same)
         return data[0]
 
     # Create a range of values to evaluate the PDF
@@ -167,7 +168,10 @@ def sample_from_area(data, percent=0.1, num_samples=1, dense=True, plot=False, s
 def is_from_dense_area(sample, data, percent):
     # Create a KDE based on the data (PDF estimation)
     # print(data)
-    kde = gaussian_kde(data)
+    try:
+        kde = gaussian_kde(data)
+    except np.linalg.LinAlgError as e:  # a strictly uniform distribution of data
+        return data[0]
 
     # Create a range of values to evaluate the PDF
     x = np.linspace(min(data), max(data), 100)  # 1000)
@@ -363,7 +367,7 @@ class NCorrFP():
         self.dist_metric_continuous = distance_metric_continuous
         self.fingerprint_code_type = fingerprint_code_type
         self.count = None  # the most recent fingerprint bit-wise counts
-        self.detected_fp = None  # the msot recently detected fingerprint
+        self.detected_fp = None  # the most recently detected fingerprint
 
     def create_fingerprint(self, recipient_id, secret_key, show_messages=True):
         """
@@ -383,10 +387,10 @@ class NCorrFP():
             fingerprint = create_hash_fingerprint(secret_key=secret_key,
                                     fingerprint_bit_length=self.fingerprint_bit_length,
                                     recipient_id=recipient_id)
-#        elif self.fingerprint_code_type == 'tardos':
-#            fingerprint = tardos_codes.generate_tardos_code(secret_key=secret_key,
-#                                                            recipient_id=recipient_id,
-#                                                            fp_len=self.fingerprint_bit_length)
+        elif self.fingerprint_code_type == 'tardos':
+            fingerprint = tardos.generate(secret_key=secret_key,
+                                                    recipient_id=recipient_id,
+                                                    fp_len=self.fingerprint_bit_length)
         else:
             fingerprint = None
             exit('Please specify valid type of fingerprint code ({})'.format(__valid_types))
@@ -407,14 +411,15 @@ class NCorrFP():
         if isinstance(fingerprint, bitstring.BitArray):
             fingerprint: ndarray = np.array(list(fingerprint.bin), dtype=int)
 
+        suspects = None
         if self.fingerprint_code_type == 'hash':
             suspects = decode_hash_fingerprint(fingerprint, secret_key, self.number_of_recipients)
         elif self.fingerprint_code_type == 'tardos':
-            pass
             # first we check direct matching 
-            tardos_codes.decode_fingerprint(fingerprint, secret_key, self.number_of_recipients)
+            #tardos_codes.decode_fingerprint(fingerprint, secret_key, self.number_of_recipients)
             #exact_match(fingerprint)
-            # tardos_codes.detect_colluders(fingerprint, secret_key, k=0.9)
+            suspects = tardos.score_users(fingerprint, secret_key, self.number_of_recipients)
+
         return suspects  # todo: return colluders
 
     def insertion(self, dataset_name, recipient_id, secret_key, primary_key_name=None, outfile=None,
@@ -713,6 +718,7 @@ class NCorrFP():
         # todo: adjust this part for the new types of fingerprint codes
         suspects = self.detect_potential_traitor(fingerprint_template, secret_key)
         print("The fingerprint is matched with probabilities:")
+        print(suspects)
         print(sorted(suspects.items(), key=lambda item: item[1], reverse=True))
 #        recipient_no = self.detect_potential_traitor(fingerprint_template, secret_key)
 #        if recipient_no >= 0:
@@ -775,7 +781,11 @@ class NCorrFP():
         if secret_key is not None:
             self.secret_key = secret_key
         # it is assumed that the first column in the dataset is the primary key
-        relation, primary_key = import_dataset_from_file(dataset_name, primary_key_name)
+        if isinstance(dataset_name, datasets.Dataset):
+            relation = dataset_name.dataframe
+            primary_key_name = dataset_name.get_primary_key_attribute()
+        else:
+            relation, primary_key = import_dataset_from_file(dataset_name, primary_key_name)
         # number of numerical attributes minus primary key
         number_of_num_attributes = len(relation.select_dtypes(exclude='object').columns) - 1
         # number of non-numerical attributes
@@ -784,7 +794,7 @@ class NCorrFP():
         tot_attributes = number_of_num_attributes + number_of_cat_attributes
 
         fingerprint = self.create_fingerprint(recipient_id, secret_key)
-        print("\nGenerated fingerprint for recipient " + str(recipient_id) + ": " + str(fingerprint))
+        # print("\nGenerated fingerprint for recipient " + str(recipient_id) + ": " + str(fingerprint))
         print("Inserting the fingerprint...\n")
 
         start = time.time()
@@ -820,7 +830,9 @@ class NCorrFP():
 
                 # select fingerprint bit
                 fingerprint_idx = random.randint(0, _MAXINT) % self.fingerprint_bit_length
+                iteration['fingerprint_idx'] = fingerprint_idx
                 fingerprint_bit = fingerprint[fingerprint_idx]
+                iteration['fingerprint_bit'] = fingerprint_bit
                 # select mask and calculate the mark bit
                 mask_bit = random.randint(0, _MAXINT) % 2
                 iteration['mask_bit'] = mask_bit
@@ -900,7 +912,7 @@ class NCorrFP():
             print("Runtime: " + str(round(runtime, 2)) + " sec.")
         if outfile is not None:
             fingerprinted_relation.to_csv(outfile, index=False)
-        return fingerprinted_relation, iter_log
+        return fingerprinted_relation, fingerprint, iter_log
 
     def demo_detection(self, dataset, secret_key, primary_key=None, correlated_attributes=None, original_columns=None):
 #        warnings.warn(
@@ -1038,7 +1050,7 @@ class NCorrFP():
             print("Runtime: " + str(int(runtime) * 1000) + " ms.")
         else:
             print("Runtime: " + str(round(runtime, 2)) + " sec.")
-        return recipient_no, iter_log
+        return recipient_no, list_to_string(fingerprint_template), iter_log
 
 
 def plot_runtime(plt_insertion=True, plt_detection=True, n_exp=5):

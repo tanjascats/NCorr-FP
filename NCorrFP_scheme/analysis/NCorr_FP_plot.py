@@ -135,12 +135,13 @@ def plot_data_accuracy(results):
         data = grouped_data[grouped_data['k'] == neighborhood_size]
 
         # Plot line for average vote error rate
-        plt.plot(data['embedding_ratio'], data['mean'],
+        plt.plot(data['embedding_ratio'], 1.0 - data['mean'],
                  label=f'{neighborhood_size} / {round(100 * neighborhood_size / 30000, 2)}%',
                  marker=markers[i])
 
         # Plot shaded area for standard deviation
-        plt.fill_between(data['embedding_ratio'], data['mean'] - data['std'], data['mean'] + data['std'], alpha=0.2)
+        plt.fill_between(data['embedding_ratio'], 1.0 - data['mean'] - data['std'], 1.0 - data['mean'] + data['std'],
+                         alpha=0.2)
 
     # Plot the ideal scenario for comparison
     # plt.plot(data['embedding_ratio'], [0.0 for i in range(len(data['embedding_ratio']))], linestyle=(0, (5,10)), linewidth=1.4,
@@ -189,7 +190,7 @@ def plot_delta_mean(results):
     # Labels and legend
     plt.xlabel('Fingerprint embedding ratio (1/gamma) [0, 1]')
     plt.ylabel('Relative \delta mean value')
-    plt.title('Change in standard deviation of the attributes due to a fingerprint')
+    plt.title('Change in mean value of the attributes due to a fingerprint')
     plt.legend(title='Attribute')
     plt.grid(True)
     plt.show()
@@ -384,8 +385,9 @@ def plot_count_updates(count_state, fingerprint):
     fig, ax = plt.subplots(figsize=(len(count_state), 2))
 
     # Create the table with two rows (first row, second row)
+    # Arrange large fingerprints into a few rows of 32 bits
     table_data = [first_row, second_row]
-    table = ax.table(cellText=table_data, loc='center', cellLoc='center', colWidths=[0.05] * len(count_state))
+    table = ax.table(cellText=table_data, loc='center', cellLoc='center')#, colWidths=[0.05] * len(count_state))  # [0.05]
 
     # Hide the axes
     ax.axis('off')
@@ -435,6 +437,68 @@ def values_for_plot_distribution(target_values):
     return x, pdf_values, masked_pdf
 
 
+def show_embedding_iteration(iteration, fingerprinted_data, iter_log, dataset):
+    print("Marking record no. " + str(iter_log[iteration]['row_index']))
+    print("Marking attribute: " + str(iter_log[iteration]['attribute']))
+    print("The record to mark: \n" + str(dataset.iloc[[iteration]]))
+    print('------------------------------------------------------------------------------------------------------------------')
+    print('How to mark the new value:')
+    print(f"Based on PRNG from this iteration, we use fingerprint bit at index {iter_log[iteration]['fingerprint_idx']}"
+          f", i.e. bit {iter_log[iteration]['fingerprint_bit']} and xor it with the mask bit (also from PRNG), in this "
+          f"case {iter_log[iteration]['mask_bit']}.\nThis operation gives us the MARK BIT. Mark bit determines how we "
+          f"sample the new value.")
+#    if iter_log[iteration]['attribute'] in correlated_attributes:
+#        other = list(correlated_attributes); other.remove(iter_log[iteration]['attribute'])
+#        print('Neighbourhood: ' +str(iter_log[iteration]['attribute']) + ' is correlated to '+ str(other)+ ' so we are finding the records with most similar values to ' + str(other) + '=' + str(dataset.iloc[iteration][other[0]]))
+#    else:
+#        print('Neighbourhood: ' + str(iter_log[iteration]['attribute']) + ' is not a correlated attribute, so we are including all attributes to find the closest neighbourhood.')
+#    print('Neighbours idx: ' + str(iter_log[iteration]['neighbors']))
+#    print('Neighbours dist: ' + str(iter_log[iteration]['dist']))
+    print('\nFirst, we look at the values of attribute ' + str(iter_log[iteration]['attribute']) + ' in this neighbourhood, and among these is our potential new value.')
+#    print('Target values:' + str(list(dataset.iloc[iter_log[iteration]['neighbors']][iter_log[iteration]['attribute']])))
+    print('For this we estimate the distribution of these target values (see the plot below) before sampling one new value.')
+    print('There are generally two outcomes for the sampled value:\n\t-mark bit is 1 (50%) - the new value is sampled from the most dense areas of a distribution of the target variable in the neighbourhood\n\t-mark bit is 0(50%) - the new value is sampled from the tails of distribution of the target value in the neighbourhood')
+    mark_bit = iter_log[iteration]['mark_bit']
+    if mark_bit == 1:
+        print('In this case, mark bit is {}, therefore we sample from the dense part of distribution of the variable {} in the neighbourhood. The thresholds are set by an arbitrary percentile (here we use 75th)'.format(mark_bit, iter_log[iteration]['attribute']))
+    else:
+        print('In this case, mark bit is {}, therefore we sample from tails of distribution of the variable {} in the neighbourhood. The thresholds are set by an arbitrary percentile (here we use 75th)'.format(mark_bit, iter_log[iteration]['attribute']))
+
+    data = list(dataset.iloc[iter_log[iteration]['neighbors']][iter_log[iteration]['attribute']])
+    x = np.linspace(min(data), max(data), 100)  # n_points)  # 1000)
+    kde = gaussian_kde(data)
+    pdf_values = kde(x)
+    threshold = np.percentile(pdf_values, 0.75*100)
+    if mark_bit:
+        mask = (pdf_values >= threshold)
+    else:
+        mask = (pdf_values < threshold)
+    masked_pdf = np.where(mask, pdf_values, 0)
+    masked_cdf = np.cumsum(masked_pdf)
+    masked_cdf /= masked_cdf[-1]
+    np.random.seed(iter_log[iteration]['seed'])
+    random_values = np.random.rand(1)
+    sampled_values = np.interp(random_values, masked_cdf, x)
+
+    plt.plot(x, pdf_values, label='Original PDF (estimate)')
+    plt.plot(x, masked_pdf, label='Modified PDF ({}th percentile)'.format(int(100 * 0.75)))
+    plt.scatter(sampled_values, [0] * 1, color='red', label='Sampled Values', zorder=5)
+    plt.hist(data, bins=10, density=True, alpha=0.3, label='Neighbourhood data points')
+    if mark_bit:
+        plt.title('Sampling from high density areas (mark bit = 1)')
+    else:
+        plt.title('Sampling from low density areas (mark bit = 0)')
+    plt.xlabel('Values')
+    plt.ylabel('Density')
+    plt.legend()
+    plt.show()
+
+    print("The sampled continuous value is rounded to the closest existing value from the data (to avoid "
+          "perceptibility of marks) and is: " + str(iter_log[iteration]['new_value']))
+    print("The fingerprinted record is:")
+    print(fingerprinted_data.iloc[[iteration]])
+
+
 def show_detection_iteration(iteration, det_iter_log, fingerprinted_data, iter_log, fingerprint, dataset):
     print("Detecting from record at idx: " + str(det_iter_log[iteration]['row_index']))
     print("Detecting from attribute: " + str(det_iter_log[iteration]['attribute']))
@@ -445,12 +509,11 @@ def show_detection_iteration(iteration, det_iter_log, fingerprinted_data, iter_l
     target_values_det = fingerprinted_data.iloc[det_iter_log[iteration]['neighbors']][
         det_iter_log[iteration]['attribute']].tolist()
     print("----------------------------------------------------------")
-    print("Obtaining neighbourhood....")
-    print('Target values:' + str(target_values_det))
-    print("----------------------------------------------------------")
+#    print("Obtaining neighbourhood....")
+#    print('Target values:' + str(target_values_det))
+#    print("----------------------------------------------------------")
 
-    print(
-        "\n--> Observing the distribution of target attribute {} below...".format(det_iter_log[iteration]['attribute']))
+    print("Observing the distribution of target attribute {} below...".format(det_iter_log[iteration]['attribute']))
     message = ' (i.e. tails of distribution)' if det_iter_log[iteration]['mark_bit'] == 0 else ' (i.e. in densest area)'
     print("Mark bit (where in distribution falls the target value?): " + str(
         det_iter_log[iteration]['mark_bit']) + message)
@@ -458,7 +521,7 @@ def show_detection_iteration(iteration, det_iter_log, fingerprinted_data, iter_l
     print("Fingerprint bit index (from PRNG): " + str(det_iter_log[iteration]['fingerprint_idx']))
     print("Fingerprint bit value (mark bit xor mask bit): " + str(det_iter_log[iteration]['fingerprint_bit']))
 
-    if det_iter_log[iteration]['fingerprint_bit'] == fingerprint[det_iter_log[iteration]['fingerprint_idx']]:
+    if int(det_iter_log[iteration]['fingerprint_bit']) == int(fingerprint[det_iter_log[iteration]['fingerprint_idx']]):
         print('\nFingerprint bit CORRECT :)')
     else:
         print('\nFingerprint bit FALSE :( (it is just a wrong vote)')
