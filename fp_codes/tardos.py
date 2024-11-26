@@ -19,9 +19,9 @@ def generate(recipient_id, secret_key, fp_len=None, epsilon=0.1):
     """
 
    Args:
-       recipient_id:
-       fp_len:
-       secret_key:
+       recipient_id (int): id of the recipient
+       fp_len (int): length of the fingerprint in bits (should be the same for all recipients)
+       secret_key: owner's secret
        epsilon:
 
    Returns:

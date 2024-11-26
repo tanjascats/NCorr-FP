@@ -1,4 +1,6 @@
 import random
+import warnings
+
 import matplotlib.pyplot as plt
 from numpy import ndarray
 from scipy.stats import gaussian_kde
@@ -44,7 +46,8 @@ def init_balltrees(correlated_attributes, relation, dist_metric_discrete="hammin
         if index is not None:  # if attr is part of any group of correlations
             # use a metric that fits with the data type
             balltree_i = BallTree(relation[correlated_attributes[index]].drop(attr, axis=1),
-                                  metric=dist_metric_discrete if attr in categorical_attributes else dist_metric_continuous)
+                                  metric=dist_metric_discrete if attr in categorical_attributes else
+                                  dist_metric_continuous)
         else:  # if attr is not correlated to anything
             metric = dist_metric_discrete
             balltree_i = BallTree(relation.drop(attr, axis=1), metric=metric)
@@ -131,21 +134,25 @@ def sample_from_area(data, percent=0.1, num_samples=1, dense=True, plot=False, s
     threshold = np.percentile(pdf_values, percent*100)
 
     # Mask the CDF to only include values within the percentile range
-    if dense:
+    if dense or (max(data) == min(data)):
+        # design decision: sampling from uniform distribution is always the same
+        # the alternative that potentially leads to less errors: sample a value outside the distribution
         mask = (pdf_values >= threshold)
     else:
         mask = (pdf_values < threshold)
 
     # Re-normalize the masked PDF and CDF
+#    with warnings.catch_warnings(record=True) as w:
     masked_pdf = np.where(mask, pdf_values, 0)
     masked_cdf = np.cumsum(masked_pdf)
     masked_cdf /= masked_cdf[-1]
+#        if len(w) > 0:
+#            exit(data)
 
     # Inverse transform sampling from the adjusted CDF
     np.random.seed(seed)
     random_values = np.random.rand(num_samples)
     sampled_values = np.interp(random_values, masked_cdf, x)
-    #print(sampled_values)
 
     # Plot the PDF, masked PDF, and the sampled values
     if plot:

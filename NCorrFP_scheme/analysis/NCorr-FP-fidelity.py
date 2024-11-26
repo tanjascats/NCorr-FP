@@ -341,7 +341,6 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
                 print(f"Empty file: {file_name}")
                 continue
 
-            # todo: do stuff on fingerprinted data
             # -- Calculate delta mean and std for each attribute --- #
             delta_mean_std = get_delta_mean_std(fingerprinted_data, data.dataframe)
             # -- Calculate: (i) hellinger dist, (ii) kl divergence, (iii) emd, (iv) ks

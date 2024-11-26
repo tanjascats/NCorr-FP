@@ -34,10 +34,11 @@ def embed_fingerprints(data, params):
         # skip the file if it already exists
         if not os.path.exists(file_path):
             scheme = NCorrFP(gamma=param['gamma'], fingerprint_bit_length=param['fingerprint_length'], k=param['k'],
-                             number_of_recipients=param['n_recipients'], fingerprint_code_type='hash')
+                             number_of_recipients=param['n_recipients'], fingerprint_code_type='tardos')
 
             scheme.insertion(data, secret_key=param['sk'], recipient_id=param['id'],
-                             correlated_attributes=data.correlated_attributes, save_computation=True, outfile=file_path)
+                             correlated_attributes=data.correlated_attributes, save_computation=True,
+                             outfile=file_path)
         else:
             print("- File already exists. {}".format(file_name))
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), data.name + "-fp")
@@ -61,11 +62,11 @@ if __name__ == '__main__':
     print(data.dataframe.head(3))
 
     # --- Define parameters --- #
-    params = {'gamma': [2],#, 4, 8, 16, 32],
-              'k': [1000], #, 500],
-              'fingerprint_length': [512], #, 256, 512],#, 128, 256],  # , 128, 256],
+    params = {'gamma': [2, 4, 8, 16, 32],
+              'k': [500], #, 1000],
+              'fingerprint_length': [2048], #, 256, 512],#, 128, 256],  # , 128, 256],
               'n_recipients': [20],
-              'sk': [100],# + i for i in range(10)],
+              'sk': [100 + i for i in range(10)],
               'id': [0]#i for i in range(20)]  # + i for i in range(10)]}  # 10)]}  # #sk-s = #experiments
               }
     print('Starting the fingerprint embeddings with the following parameters: ')

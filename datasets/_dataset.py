@@ -25,7 +25,9 @@ class Dataset(ABC):
         elif self.path is not None:
             self.dataframe = pd.read_csv(self.path)
 
-        corr_mtx = self.dataframe.drop(['Id'], axis=1).corr() if 'Id' in self.dataframe.columns else self.dataframe.corr()
+        # numerical correlations
+        corr_mtx = self.dataframe.drop(['Id'], axis=1).select_dtypes(include=['number']).corr() \
+            if 'Id' in self.dataframe.columns else self.dataframe.select_dtypes(include=['number']).corr()
         self.correlated_attributes = utils.extract_mutually_correlated_groups(corr_mtx, threshold=0.55)
 
         if not isinstance(self.dataframe, pd.DataFrame):
@@ -199,8 +201,8 @@ class BreastCancerWisconsin(Dataset):
 
 class Adult(Dataset):
     def __init__(self):
-        path = 'datasets/adult.csv'
-        super().__init__(path=path, target_attribute='income')
+        path = 'datasets/adult_id.csv'
+        super().__init__(path=path, name='adult', target_attribute='income', primary_key_attribute='Id')
 
 
 class BreastCancer(Dataset):
