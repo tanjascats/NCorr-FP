@@ -25,10 +25,12 @@ class Dataset(ABC):
         elif self.path is not None:
             self.dataframe = pd.read_csv(self.path)
 
-        # numerical correlations
-        corr_mtx = self.dataframe.drop(['Id'], axis=1).select_dtypes(include=['number']).corr() \
-            if 'Id' in self.dataframe.columns else self.dataframe.select_dtypes(include=['number']).corr()
-        self.correlated_attributes = utils.extract_mutually_correlated_groups(corr_mtx, threshold=0.55)
+        # numerical correlations (Pearson's)
+#        corr_mtx = self.dataframe.drop(['Id'], axis=1).select_dtypes(include=['number']).corr() \
+#            if 'Id' in self.dataframe.columns else self.dataframe.select_dtypes(include=['number']).corr()
+        self.correlated_attributes = utils.extract_mutually_correlated_groups(self.dataframe,
+                                                                              threshold_num=0.55, threshold_cat=0.45)
+        # categorical correlations (Cramer's V)
 
         if not isinstance(self.dataframe, pd.DataFrame):
             raise TypeError('Data frame must be type pandas.DataFrame')

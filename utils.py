@@ -15,6 +15,8 @@ from sklearn.model_selection._validation import _score, _aggregate_score_dicts, 
 from sklearn.model_selection._split import check_cv
 from sklearn.exceptions import FitFailedWarning
 from sklearn.metrics._scorer import check_scoring, _check_multimetric_scoring
+from scipy.stats import chi2_contingency
+
 
 import datasets
 
@@ -389,28 +391,61 @@ def fp_cross_val_score(estimator, X_original, y_original, X_fingerprint, y_finge
 #    # todo: in the latex version there might be necessary to remove some parts like \toprule
 #    return tab
 
-import pandas as pd
-import numpy as np
-from scipy.cluster.hierarchy import linkage, fcluster
+
+def cramers_v(x, y):
+    """
+        Calculate Cramér's V for two categorical attributes.
+
+        Args:
+        x (pd.Series): First categorical variable.
+        y (pd.Series): Second categorical variable.
+
+        Returns:
+        float: Cramér's V statistic.
+        """
+    # Create a contingency table
+    contingency_table = pd.crosstab(x, y)
+
+    # Perform chi-squared test
+    chi2, _, _, _ = chi2_contingency(contingency_table)
+
+    # Calculate Cramér's V
+    n = contingency_table.sum().sum()  # Total number of observations
+    min_dim = min(contingency_table.shape) - 1  # Minimum of rows - 1 or columns - 1
+    return np.sqrt(chi2 / (n * min_dim))
 
 
-def extract_mutually_correlated_groups(corr_matrix, threshold):
+def extract_mutually_correlated_groups(dataframe, threshold_num, threshold_cat):
     """
     Extract lists of mutually correlated attributes based on a correlation threshold.
 
     Args:
-    - corr_matrix (pd.DataFrame): Correlation matrix of the dataset.
-    - threshold (float): Minimum correlation threshold to consider attributes as mutually correlated.
+    - dataframe (pd.DataFrame): Dataset
+    - threshold_num (float): Minimum correlation threshold to consider numerical attributes as mutually correlated
+    - threshold_cat (float): Minimum correlation threshold to consider categorical attributes as mutually correlated
 
     Returns:
     - list of lists: Each inner list contains mutually correlated attributes.
     """
+    # numerical correlations (Pearson's)
+    corr_matrix = dataframe.drop(['Id'], axis=1).select_dtypes(include=['number']).corr() \
+        if 'Id' in dataframe.columns else dataframe.select_dtypes(include=['number']).corr()
+
     # Mask diagonal and lower triangle to avoid redundant pairs
     mask = np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
 
     # Get pairs with absolute correlation above the threshold
+    # Numerical
     correlated_pairs = [(corr_matrix.index[i], corr_matrix.columns[j])
-                        for i, j in zip(*np.where((np.abs(corr_matrix) > threshold) & mask))]
+                        for i, j in zip(*np.where((np.abs(corr_matrix) > threshold_num) & mask))]
+
+    # Categorical
+    # Compute Cramér's V for all pairs of categorical attributes
+    for i, col1 in enumerate(dataframe.select_dtypes(include=['object', 'category']).columns):
+        for col2 in dataframe.select_dtypes(include=['object', 'category']).columns[i + 1:]:  # Avoid redundant pairs
+            v = cramers_v(dataframe[col1], dataframe[col2])
+            if v > threshold_cat:
+                correlated_pairs.append((col1, col2))
 
     # Convert pairs to clusters using hierarchical clustering
     if not correlated_pairs:
@@ -435,9 +470,4 @@ def extract_mutually_correlated_groups(corr_matrix, threshold):
 
     return mutually_correlated_groups
 
-# Example usage:
-# Assuming 'correlation_matrix' is your DataFrame of correlations
-# correlation_matrix = pd.DataFrame(...)  # Replace with actual correlation matrix
-# threshold = 0.8
-# mutually_correlated_groups = extract_mutually_correlated_groups(correlation_matrix, threshold)
-# print("Mutually Correlated Groups:", mutually_correlated_groups)
+

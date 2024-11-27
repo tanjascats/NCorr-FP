@@ -36,7 +36,6 @@ def init_balltrees(correlated_attributes, relation, dist_metric_discrete="hammin
     Returns: a dictionary (attribute name: balltree)
 
     """
-    # todo: resolve distances between mixed types
     start_training_balltrees = time.time()
     # ball trees from all-except-one attribute and all attributes
     balltree = dict()
@@ -467,7 +466,7 @@ class NCorrFP():
         start = time.time()
         time_profile = {'query_time': 0, 'write_time': 0, 'read_time': 0, 'mark_time': 0}
 
-        # label encoder
+        # label encoder - needed for balltrees
         categorical_attributes = relation.select_dtypes(include='object').columns
         label_encoders = dict()
         for cat in categorical_attributes:
