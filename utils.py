@@ -415,21 +415,53 @@ def cramers_v(x, y):
     return np.sqrt(chi2 / (n * min_dim))
 
 
-def extract_mutually_correlated_groups(dataframe, threshold_num, threshold_cat):
+def eta_squared(dataframe, categorical_col, numerical_col):
+    """
+        Calculate Eta-squared to measure the association between a categorical
+        and a numerical variable.
+
+        Args:
+        df (pd.DataFrame): DataFrame containing the data.
+        categorical_col (str): Column name of the categorical variable.
+        numerical_col (str): Column name of the numerical variable.
+
+        Returns:
+        float: Eta-squared value.
+        """
+    # Group the data by the categorical variable
+    group_means = dataframe.groupby(categorical_col)[numerical_col].mean()
+    overall_mean = dataframe[numerical_col].mean()
+
+    # Calculate SS_between
+    ss_between = sum(dataframe[categorical_col].value_counts()[group] * (mean - overall_mean) ** 2
+                     for group, mean in group_means.items())
+
+    # Calculate SS_total
+    ss_total = sum((dataframe[numerical_col] - overall_mean) ** 2)
+
+    # Eta-squared
+    eta_squared_value = ss_between / ss_total
+    return eta_squared_value
+
+
+def extract_mutually_correlated_groups(dataframe, threshold_num=0.80, threshold_cat=0.55, threshold_numcat=0.14):
     """
     Extract lists of mutually correlated attributes based on a correlation threshold.
 
     Args:
     - dataframe (pd.DataFrame): Dataset
-    - threshold_num (float): Minimum correlation threshold to consider numerical attributes as mutually correlated
-    - threshold_cat (float): Minimum correlation threshold to consider categorical attributes as mutually correlated
+    - threshold_num (float): Minimum correlation threshold to consider numerical attributes as mutually correlated (Pearson's correlation)
+    - threshold_cat (float): Minimum correlation threshold to consider categorical attributes as mutually correlated (Cramer's V)
+    - threshold_numcat (float): Minimum correlation threshold to consider a high mutual correlation between a numerical and categorical attribute (eta squared)
 
     Returns:
     - list of lists: Each inner list contains mutually correlated attributes.
     """
+    numerical_columns = dataframe.drop(['Id'], axis=1).select_dtypes(include=['number'])
+    categorical_columns = dataframe.drop(['Id'], axis=1).select_dtypes(include=['object', 'category'])
     # numerical correlations (Pearson's)
-    corr_matrix = dataframe.drop(['Id'], axis=1).select_dtypes(include=['number']).corr() \
-        if 'Id' in dataframe.columns else dataframe.select_dtypes(include=['number']).corr()
+    corr_matrix = numerical_columns.corr() \
+        if 'Id' in dataframe.columns else numerical_columns.corr()
 
     # Mask diagonal and lower triangle to avoid redundant pairs
     mask = np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
@@ -441,11 +473,23 @@ def extract_mutually_correlated_groups(dataframe, threshold_num, threshold_cat):
 
     # Categorical
     # Compute Cramér's V for all pairs of categorical attributes
-    for i, col1 in enumerate(dataframe.select_dtypes(include=['object', 'category']).columns):
-        for col2 in dataframe.select_dtypes(include=['object', 'category']).columns[i + 1:]:  # Avoid redundant pairs
+    for i, col1 in enumerate(categorical_columns.columns):
+        for col2 in categorical_columns.columns[i + 1:]:  # Avoid redundant pairs
             v = cramers_v(dataframe[col1], dataframe[col2])
             if v > threshold_cat:
                 correlated_pairs.append((col1, col2))
+
+    # Numerical x Categorical
+    # Eta squared - the proportion of variance in the continuous variable explained by the categorical variable [0,1]
+    for cat_col in categorical_columns.columns:
+        for num_col in numerical_columns.columns:
+            try:
+                eta_sq_value = eta_squared(dataframe, cat_col, num_col)
+                if eta_sq_value > threshold_numcat:
+                    correlated_pairs.append((cat_col, num_col))
+            except Exception as e:
+                # Skip problematic pairs (e.g., NaN or single-value columns)
+                continue
 
     # Convert pairs to clusters using hierarchical clustering
     if not correlated_pairs:
