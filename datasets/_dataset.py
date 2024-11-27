@@ -203,7 +203,7 @@ class BreastCancerWisconsin(Dataset):
 
 class Adult(Dataset):
     def __init__(self):
-        path = 'datasets/adult_id.csv'
+        path = 'datasets/adult_train_id.csv'
         super().__init__(path=path, name='adult', target_attribute='income', primary_key_attribute='Id')
 
 

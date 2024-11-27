@@ -11,12 +11,45 @@ import hashlib
 import bitstring
 import copy
 import timeit
+from scipy.spatial.distance import minkowski
+
 
 from fp_codes import tardos
 from utils import *
 from fp_codes.tardos import *
 
 _MAXINT = 2**31 - 1
+
+
+def hybrid_distance(x, y, categorical_idx, continuous_idx, cat_metric="hamming", cont_metric="euclidean", **kwargs):
+    """
+    Custom distance function for mixed data types.
+
+    Args:
+        x, y (np.ndarray): Data points being compared.
+        categorical_idx (list): Indices of categorical attributes.
+        continuous_idx (list): Indices of continuous attributes.
+        cat_metric (str): Metric for categorical data (default: "hamming").
+        cont_metric (str): Metric for continuous data (default: "euclidean").
+
+    Returns:
+        float: Combined distance.
+    """
+    # Separate categorical and continuous attributes
+    x_cat, y_cat = x[categorical_idx], y[categorical_idx]
+    x_cont, y_cont = x[continuous_idx], y[continuous_idx]
+
+    # Compute distances
+    cat_distance = np.sum(x_cat != y_cat) if cat_metric == "hamming" else 0
+    if cont_metric == "euclidean":
+        cont_distance = np.linalg.norm(x_cont - y_cont)
+    elif cont_metric == "minkowski":
+        cont_distance = minkowski(x_cont, y_cont, p=kwargs.get("p", 2))
+    else:
+        cont_distance = 0
+
+    # Combine distances
+    return cat_distance + cont_distance
 
 
 def init_balltrees(correlated_attributes, relation, dist_metric_discrete="hamming", dist_metric_continuous="minkowski",
@@ -39,18 +72,22 @@ def init_balltrees(correlated_attributes, relation, dist_metric_discrete="hammin
     start_training_balltrees = time.time()
     # ball trees from all-except-one attribute and all attributes
     balltree = dict()
+
     for attr in relation.columns:
         # get the index of a list of correlated attributes to attr; if attr is not correlated then return None
         index = next((i for i, sublist in enumerate(correlated_attributes) if attr in sublist), None)
         if index is not None:  # if attr is part of any group of correlations
             # use a metric that fits with the data type
-            balltree_i = BallTree(relation[correlated_attributes[index]].drop(attr, axis=1),
-                                  metric=dist_metric_discrete if attr in categorical_attributes else
-                                  dist_metric_continuous)
+            subdata = relation[correlated_attributes[index]].drop(attr, axis=1)
         else:  # if attr is not correlated to anything
-            metric = dist_metric_discrete
-            balltree_i = BallTree(relation.drop(attr, axis=1), metric=metric)
-        balltree[attr] = balltree_i
+            subdata = relation.drop(attr, axis=1)
+
+        categorical_idx = [subdata.columns.get_loc(attr) for attr in categorical_attributes if attr in subdata.columns]
+        continuous_idx = [subdata.columns.get_loc(attr) for attr in subdata.columns if attr not in categorical_attributes]
+        #subdata.to_numpy()
+        balltree[attr] = BallTree(subdata, metric=lambda x, y: hybrid_distance(x, y, categorical_idx, continuous_idx,
+                                                                               dist_metric_discrete, dist_metric_continuous))
+
     if show_messages:
         print("Training balltrees in: " + str(round(time.time() - start_training_balltrees, 4)) + " sec.")
     return balltree
