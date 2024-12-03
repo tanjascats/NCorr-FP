@@ -1,5 +1,9 @@
 import random
-import warnings
+
+#from deprecated import deprecated
+import functools
+import inspect
+
 
 import matplotlib.pyplot as plt
 from numpy import ndarray
@@ -413,6 +417,8 @@ class NCorrFP():
         self.fingerprint_code_type = fingerprint_code_type
         self.count = None  # the most recent fingerprint bit-wise counts
         self.detected_fp = None  # the most recently detected fingerprint
+        self.insertion_iter_log = []  # tracks the most recent insertion
+        self.detection_iter_log = []  # tracts the most recent detection
 
     def create_fingerprint(self, recipient_id, secret_key, show_messages=True):
         """
@@ -487,7 +493,7 @@ class NCorrFP():
             self.secret_key = secret_key
         # it is assumed that the first column in the dataset is the primary key
         if isinstance(dataset_name, datasets.Dataset):
-            relation = dataset_name.dataframe
+            relation = dataset_name.dataframe.copy()
             primary_key_name = dataset_name.get_primary_key_attribute()
             if correlated_attributes is None:
                 correlated_attributes = dataset_name.correlated_attributes
@@ -522,6 +528,7 @@ class NCorrFP():
                                   self.dist_metric_continuous, categorical_attributes=categorical_attributes)
 
         fingerprinted_relation = relation.copy()
+        self.insertion_iter_log = []  # reset iteration log
         for r in relation.iterrows():
             # r[0] is an index of a row = primary key
             # seed = concat(secret_key, primary_key)
@@ -530,20 +537,30 @@ class NCorrFP():
 
             # selecting the tuple
             if random.choices([0, 1], [1 / self.gamma, 1 - 1 / self.gamma]) == [0]:  # gamma can be a float
+                iteration = {'seed': seed, 'row_index': r[1].iloc[0]}
                 # selecting the attribute
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # +1 to skip the prim key
                 read_start = time.time()
                 attr_name = r[1].index[attr_idx]
                 attribute_val = r[1].iloc[attr_idx]
+                iteration['attribute'] = attr_name
+
                 read_end = time.time()
                 time_profile['read_time'] += read_end - read_start
 
                 # select fingerprint bit
                 fingerprint_idx = random.randint(0, _MAXINT) % self.fingerprint_bit_length
+                iteration['fingerprint_idx'] = fingerprint_idx
+
                 fingerprint_bit = fingerprint[fingerprint_idx]
+                iteration['fingerprint_bit'] = fingerprint_bit
+
                 # select mask and calculate the mark bit
                 mask_bit = random.randint(0, _MAXINT) % 2
+                iteration['mask_bit'] = mask_bit
+
                 mark_bit = (mask_bit + fingerprint_bit) % 2
+                iteration['mark_bit'] = mark_bit
 
                 marked_attribute = attribute_val
                 # fp information: if mark_bit = fp_bit xor mask_bit is 1 then take the most frequent value,
@@ -599,6 +616,8 @@ class NCorrFP():
                         querying_end = time.time()
                         time_profile['query_time'] += querying_end-querying_start
 #                        print('Balltree querying (efficient) in {} seconds.'.format(round(querying_end - querying_start, 8)))
+                iteration['neighbors'] = neighbours
+                iteration['dist'] = dist
 
                 marking_start = time.time()
                 neighbourhood = relation.iloc[neighbours][attr_name].tolist()
@@ -606,11 +625,13 @@ class NCorrFP():
                     marked_attribute = mark_categorical_value(neighbourhood, mark_bit)
                 else:
                     marked_attribute = mark_continuous_value(neighbourhood, mark_bit, seed=seed)
+                iteration['new_value'] = marked_attribute
                 marking_end = time.time()
                 time_profile['mark_time'] += marking_end - marking_start
 
                 writing_time_start = time.time()
                 fingerprinted_relation.at[r[0], r[1].keys()[attr_idx]] = marked_attribute
+                self.insertion_iter_log.append(iteration)
                 writing_time_end = time.time()
                 time_profile['write_time'] += writing_time_end - writing_time_start
 #                print('Writing one fingerprinted value in {} seconds.'.format(round(writing_time_end-writing_time_start, 8)))
@@ -695,22 +716,32 @@ class NCorrFP():
                                       self.dist_metric_discrete, self.dist_metric_continuous, categorical_attributes)
 
         count = [[0, 0] for x in range(self.fingerprint_bit_length)]
-
+        self.detection_iter_log = []  # reset the iteration log
         for r in relation_fp.dataframe.iterrows():
             seed = int((secret_key << self.__primary_key_len) + r[1].iloc[0])  # primary key must be the first column
             random.seed(seed)
             # this tuple was marked
             if random.choices([0, 1], [1 / self.gamma, 1 - 1 / self.gamma]) == [0]:
+                iteration = {'seed': seed, 'row_index': r[1].iloc[0]}
+
                 # this attribute was marked (skip the primary key)
                 attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # add 1 to skip the primary key
                 attr_name = r[1].index[attr_idx]
                 if attr_name in attacked_columns:  # if this columns was deleted by VA, don't collect the votes
                     continue
+                iteration['attribute'] = attr_name
+
                 attribute_val = r[1].iloc[attr_idx]
+                iteration['attribute_val'] = attribute_val
+
                 # fingerprint bit
                 fingerprint_idx = random.randint(0, _MAXINT) % self.fingerprint_bit_length
+                iteration['fingerprint_idx'] = fingerprint_idx
+
                 # mask
                 mask_bit = random.randint(0, _MAXINT) % 2
+                iteration['mask_bit'] = mask_bit
+
 
                 corr_group_index = next((i for i, sublist in enumerate(correlated_attributes) if attr_name in sublist), None)
                 if corr_group_index is not None:  # if attr_name is in correlated attributes
@@ -743,6 +774,9 @@ class NCorrFP():
                         k_dist = dist[0][self.k - 1]
                         neighbours = neighbours[0][dist[0] <= k_dist]  # get k neighbours plus the ties
 
+                iteration['neighbors'] = neighbours
+                iteration['dist'] = dist
+
                 # check the frequencies of the values
                 neighbourhood = relation_fp.dataframe.iloc[neighbours][attr_name].tolist()
                 mark_bit = get_mark_bit(is_categorical=(attr_name in categorical_attributes),
@@ -750,6 +784,12 @@ class NCorrFP():
                                         relation_fp=relation_fp, attr_name=attr_name)
                 fingerprint_bit = (mark_bit + mask_bit) % 2
                 count[fingerprint_idx][fingerprint_bit] += 1
+
+                iteration['count_state'] = copy.deepcopy(count)  # this returns the final counts for each step ??
+                iteration['mark_bit'] = mark_bit
+                iteration['fingerprint_bit'] = fingerprint_bit
+
+                self.detection_iter_log.append(iteration)
 
         # this fingerprint template will be upside-down from the real binary representation
         fingerprint_template = [2] * self.fingerprint_bit_length
@@ -821,6 +861,7 @@ class NCorrFP():
         return suspected_colluders, suspicion_scores
 
 
+#    @deprecated("This function is about to be removed. Use scheme.insertion_iter_log instead.")
     def demo_insertion(self, dataset_name, recipient_id, secret_key, primary_key_name=None, outfile=None,
                        correlated_attributes=None):
 #        warnings.warn(
@@ -967,6 +1008,7 @@ class NCorrFP():
             fingerprinted_relation.to_csv(outfile, index=False)
         return fingerprinted_relation, fingerprint, iter_log
 
+ #   @deprecated("This function is about to be removed. Use scheme.detection_iter_log instead.")
     def demo_detection(self, dataset, secret_key, primary_key=None, correlated_attributes=None, original_columns=None):
 #        warnings.warn(
 #            "This function is deprecated and will be removed in future versions. Use NCorrFP.demo.detection "
@@ -1187,3 +1229,4 @@ def plot_runtime(plt_insertion=True, plt_detection=True, n_exp=5):
         plt.legend()
         plt.grid(True)
         plt.show()
+

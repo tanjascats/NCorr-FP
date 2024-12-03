@@ -12,8 +12,8 @@ class Demo():
     def __init__(self, scheme):
         self.scheme = scheme
         self.fingerprinted_data = None
-        self.iter_log = None
-        self.det_iter_log = None
+        self.insertion_iter_log = scheme.insertion_iter_log
+        self.detection_iter_log = scheme.detection_iter_log
         self.primary_key_name = None
         self.secret_key = None
         self.recipient_id = None
@@ -332,45 +332,45 @@ class Demo():
         return recipient_no, iter_log
 
     def show_embedding_iteration(self, iter):
-        print("Marking record no. " + str(self.iter_log[iter]['row_index']))
-        print("Marking attribute: " + str(self.iter_log[iter]['attribute']))
+        print("Marking record no. " + str(self.insertion_iter_log[iter]['row_index']))
+        print("Marking attribute: " + str(self.insertion_iter_log[iter]['attribute']))
         print("The record to mark: \n" + str(self.relation.iloc[[iter]]))
         print(
             '------------------------------------------------------------------------------------------------------------------')
-        if self.iter_log[iter]['attribute'] in self.correlated_attributes:
+        if self.insertion_iter_log[iter]['attribute'] in self.correlated_attributes:
             other = list(self.correlated_attributes)
-            other.remove(self.iter_log[iter]['attribute'])
-            print('Neighbourhood: ' + str(self.iter_log[iter]['attribute']) + ' is correlated to ' + str(
+            other.remove(self.insertion_iter_log[iter]['attribute'])
+            print('Neighbourhood: ' + str(self.insertion_iter_log[iter]['attribute']) + ' is correlated to ' + str(
                 other) + ' so we are finding the records with most similar values to ' + str(other) + '=' + str(
                 self.relation.iloc[iter][other[0]]))
         else:
-            print('Neighbourhood: ' + str(self.iter_log[iter][
+            print('Neighbourhood: ' + str(self.insertion_iter_log[iter][
                                               'attribute']) + ' is not a correlated attribute, so we are including all attributes to find the closest neighbourhood.')
-        print('Neighbours idx: ' + str(self.iter_log[iter]['neighbors']))
-        print('Neighbours dist: ' + str(self.iter_log[iter]['dist']))
-        print('Neighbours values:' + str(list(self.relation.iloc[self.iter_log[iter]['neighbors']]['X'])))
+        print('Neighbours idx: ' + str(self.insertion_iter_log[iter]['neighbors']))
+        print('Neighbours dist: ' + str(self.insertion_iter_log[iter]['dist']))
+        print('Neighbours values:' + str(list(self.relation.iloc[self.insertion_iter_log[iter]['neighbors']]['X'])))
         print('\nNow we look at the values of attribute ' + str(
-            self.iter_log[iter]['attribute']) + ' in this neighbourhood, and among these is our potential new value.')
-        print('Target values:' + str(list(self.relation.iloc[self.iter_log[iter]['neighbors']][self.iter_log[iter]['attribute']])))
+            self.insertion_iter_log[iter]['attribute']) + ' in this neighbourhood, and among these is our potential new value.')
+        print('Target values:' + str(list(self.relation.iloc[self.insertion_iter_log[iter]['neighbors']][self.insertion_iter_log[iter]['attribute']])))
         print(
             'For this we estimate the distribution of these target values (see the plot below) before sampling one new value.')
         print(
             'There are generally two outcomes for the sampled value:\n\t-mark bit is 1 (50%) - the new value is sampled from the most dense areas of a distribution of the target variable in the neighbourhood\n\t-mark bit is 0(50%) - the new value is sampled from the tails of distribution of the target value in the neighbourhood')
         print('Mark bit is generated pseudorandomly via PRNG.\n')
-        mark_bit = self.iter_log[iter]['mark_bit']
+        mark_bit = self.insertion_iter_log[iter]['mark_bit']
         if mark_bit == 1:
             print(
                 'In this case, mark bit is {}, therefore we sample from the dense part of distribution of the variable {} in the neighbourhood. The thresholds are set by an arbitrary percentile (here we use 75th)'.format(
-                    mark_bit, self.iter_log[iter]['attribute']))
+                    mark_bit, self.insertion_iter_log[iter]['attribute']))
         else:
             print(
                 'In this case, mark bit is {}, therefore we sample from tails of distribution of the variable {} in the neighbourhood. The thresholds are set by an arbitrary percentile (here we use 75th)'.format(
-                    mark_bit, self.iter_log[iter]['attribute']))
-        sample_from_area(data=list(self.relation.iloc[self.iter_log[iter]['neighbors']][self.iter_log[iter]['attribute']]), percent=0.75,
-                         dense=mark_bit, plot=True, seed=self.iter_log[iter]['seed'])
+                    mark_bit, self.insertion_iter_log[iter]['attribute']))
+        sample_from_area(data=list(self.relation.iloc[self.insertion_iter_log[iter]['neighbors']][self.insertion_iter_log[iter]['attribute']]), percent=0.75,
+                         dense=mark_bit, plot=True, seed=self.insertion_iter_log[iter]['seed'])
         print(
             "The sampled continuous value is rounded to the closest existing value from the data (to avoid perceptibility of marks) and is: " + str(
-                self.iter_log[iter]['new_value']))
+                self.insertion_iter_log[iter]['new_value']))
         print("The fingerprinted record is:")
         print(self.fingerprinted_data.iloc[[iter]])
 
@@ -462,14 +462,14 @@ class Demo():
 
 
     def show_detection_iteration(self, iteration):
-        print("Detecting from record at idx: " + str(self.det_iter_log[iteration]['row_index']))
-        print("Detecting from attribute: " + str(self.det_iter_log[iteration]['attribute']))
+        print("Detecting from record at idx: " + str(self.detection_iter_log[iteration]['row_index']))
+        print("Detecting from attribute: " + str(self.detection_iter_log[iteration]['attribute']))
         print(self.fingerprinted_data.iloc[[iteration]])
-        fingerprinted_value = self.fingerprinted_data.iloc[self.det_iter_log[iteration]['row_index']][
-            self.det_iter_log[iteration]['attribute']]
+        fingerprinted_value = self.fingerprinted_data.iloc[self.detection_iter_log[iteration]['row_index']][
+            self.detection_iter_log[iteration]['attribute']]
         print('Fingerpritned value: ' + str(fingerprinted_value))
-        target_values_det = self.fingerprinted_data.iloc[self.det_iter_log[iteration]['neighbors']][
-            self.det_iter_log[iteration]['attribute']].tolist()
+        target_values_det = self.fingerprinted_data.iloc[self.detection_iter_log[iteration]['neighbors']][
+            self.detection_iter_log[iteration]['attribute']].tolist()
         print("----------------------------------------------------------")
         print("Obtaining neighbourhood....")
         print('Target values:' + str(target_values_det))
@@ -500,20 +500,20 @@ class Demo():
         axs[1].legend(prop={'size': 8})
 
         print(
-            "\n--> Observing the distribution of target attribute {} below...".format(self.det_iter_log[iteration]['attribute']))
-        message = ' (i.e. tails of distribution)' if self.det_iter_log[iteration]['mark_bit'] == 0 else ' (i.e. in densest area)'
+            "\n--> Observing the distribution of target attribute {} below...".format(self.detection_iter_log[iteration]['attribute']))
+        message = ' (i.e. tails of distribution)' if self.detection_iter_log[iteration]['mark_bit'] == 0 else ' (i.e. in densest area)'
         print("Mark bit (where in distribution falls the target value?): " + str(
-            self.det_iter_log[iteration]['mark_bit']) + message)
-        print("Mask bit (from PRNG): " + str(self.det_iter_log[iteration]['mask_bit']))
-        print("Fingerprint bit index (from PRNG): " + str(self.det_iter_log[iteration]['fingerprint_idx']))
-        print("Fingerprint bit value (mark bit xor mask bit): " + str(self.det_iter_log[iteration]['fingerprint_bit']))
+            self.detection_iter_log[iteration]['mark_bit']) + message)
+        print("Mask bit (from PRNG): " + str(self.detection_iter_log[iteration]['mask_bit']))
+        print("Fingerprint bit index (from PRNG): " + str(self.detection_iter_log[iteration]['fingerprint_idx']))
+        print("Fingerprint bit value (mark bit xor mask bit): " + str(self.detection_iter_log[iteration]['fingerprint_bit']))
 
-        if self.det_iter_log[iteration]['fingerprint_bit'] == self.fingerprint[self.det_iter_log[iteration]['fingerprint_idx']]:
+        if self.detection_iter_log[iteration]['fingerprint_bit'] == self.fingerprint[self.detection_iter_log[iteration]['fingerprint_idx']]:
             print('\nFingerprint bit CORRECT :)')
         else:
             print('\nFingerprint bit FALSE :( (it is just a wrong vote)')
 
-        self.plot_count_updates(self.det_iter_log[iteration]['count_state'], self.fingerprint)
+        self.plot_count_updates(self.detection_iter_log[iteration]['count_state'], self.fingerprint)
         print(
             'Table: fingerprint count updates after this iteration (iteration {}). Each column is one fingerprint bit position (e.g. 16-bit --> 16 columns), and each row represents votes for either 0 or 1 being the value of that bit. The final decision is made at the end af the detection algorithm according to majority vote.'.format(
                 iteration))
@@ -521,8 +521,8 @@ class Demo():
     def get_error_iterations(self):
         # find all iterations with errors in detection
         errors = []
-        for iteration in range(len(self.det_iter_log)):
-            if self.det_iter_log[iteration]['fingerprint_bit'] != self.fingerprint[self.det_iter_log[iteration]['fingerprint_idx']]:
+        for iteration in range(len(self.detection_iter_log)):
+            if self.detection_iter_log[iteration]['fingerprint_bit'] != self.fingerprint[self.detection_iter_log[iteration]['fingerprint_idx']]:
                 errors.append(iteration)
         return errors
 
@@ -544,16 +544,16 @@ class Demo():
             if iter_count > batch:  # exit criterium
                 break
 
-            print("\nDetecting from attribute: " + str(self.det_iter_log[iteration]['attribute']))
-            fingerprinted_value = self.fingerprinted_data.iloc[self.det_iter_log[iteration]['row_index']][
-                self.det_iter_log[iteration]['attribute']]
+            print("\nDetecting from attribute: " + str(self.detection_iter_log[iteration]['attribute']))
+            fingerprinted_value = self.fingerprinted_data.iloc[self.detection_iter_log[iteration]['row_index']][
+                self.detection_iter_log[iteration]['attribute']]
             print('Fingerprinted value: ' + str(fingerprinted_value))
-            target_values_det = self.fingerprinted_data.iloc[self.det_iter_log[iteration]['neighbors']][
-                self.det_iter_log[iteration]['attribute']].tolist()
-            message = ' (i.e. tails of distribution)' if self.det_iter_log[iteration][
+            target_values_det = self.fingerprinted_data.iloc[self.detection_iter_log[iteration]['neighbors']][
+                self.detection_iter_log[iteration]['attribute']].tolist()
+            message = ' (i.e. tails of distribution)' if self.detection_iter_log[iteration][
                                                              'mark_bit'] == 0 else ' (i.e. in densest area)'
             print("Mark bit (where in distribution falls the target value?): " + str(
-                self.det_iter_log[iteration]['mark_bit']) + message)
+                self.detection_iter_log[iteration]['mark_bit']) + message)
 
             x_det, pdf_values_det, masked_pdf_det = self.values_for_plot_distribution(target_values_det)
             target_values_ins = list(self.relation.iloc[self.iter_log[iteration]['neighbors']][self.iter_log[iteration]['attribute']])
@@ -575,7 +575,7 @@ class Demo():
             axs[1].hist(target_values_ins, bins=10, density=True, alpha=0.3, label='Neighbourhood\n data points')
             axs[1].scatter(self.iter_log[iteration]['new_value'], 0, color='red', label='Marked value', zorder=5)
             axs[1].set_ylabel('Density')
-            axs[1].set_xlabel('Values {}'.format(self.det_iter_log[iteration]['attribute']))
+            axs[1].set_xlabel('Values {}'.format(self.detection_iter_log[iteration]['attribute']))
             axs[1].set_title('Original data')
             axs[1].legend(prop={'size': 8})
 
