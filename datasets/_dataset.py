@@ -29,7 +29,7 @@ class Dataset(ABC):
 #        corr_mtx = self.dataframe.drop(['Id'], axis=1).select_dtypes(include=['number']).corr() \
 #            if 'Id' in self.dataframe.columns else self.dataframe.select_dtypes(include=['number']).corr()
         self.correlated_attributes = utils.extract_mutually_correlated_groups(self.dataframe,
-                                                                              threshold_num=0.55, threshold_cat=0.45)
+                                                                              threshold_num=0.70, threshold_cat=0.45)
         # categorical correlations (Cramer's V)
 
         if not isinstance(self.dataframe, pd.DataFrame):
@@ -203,7 +203,7 @@ class BreastCancerWisconsin(Dataset):
 
 class Adult(Dataset):
     def __init__(self):
-        path = 'datasets/adult_train_id.csv'
+        path = path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'adult_train_id_sample.csv')  # todo: change to full data
         super().__init__(path=path, name='adult', target_attribute='income', primary_key_attribute='Id')
 
 

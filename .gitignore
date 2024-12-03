@@ -1,5 +1,5 @@
 .idea/
 .ipynb_checkpoints/
 __pycache__/
-NCorrFP_scheme/robustness_analysis/log/test/
+NCorrFP/robustness_analysis/log/test/
 fp_codes/tardos_codes_old.py

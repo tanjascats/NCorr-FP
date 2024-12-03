@@ -47,7 +47,7 @@ def import_dataset_from_file(data_path, primary_key_attribute=None):
         dataset = pd.read_csv(root + "/datasets/breast_cancer_full.csv")
         primary_key_attribute = 'Id'
     elif data_path == 'adult':
-        dataset = pd.read_csv(root + "/datasets/adult_id.csv")
+        dataset = pd.read_csv(root + "/datasets/adult_train_id.csv")
         primary_key_attribute = 'Id'
     # other datasets require relative path
     else:

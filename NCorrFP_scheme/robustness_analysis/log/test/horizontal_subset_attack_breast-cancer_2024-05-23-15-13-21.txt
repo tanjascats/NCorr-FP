@@ -1,4 +1,0 @@
-2024-05-23 15:13:23
-seed: 332
-Data: breast-cancer
-(size of subset, gamma, xi, length of a fingerprint): (1, 1, 2, 16)

@@ -1,7 +1,7 @@
-import NCorrFP_scheme.NCorrFP
+import NCorrFP.NCorrFP
 import attacks.bit_flipping_attack
 import datasets
-from NCorrFP_scheme.NCorrFP import NCorrFP
+from NCorrFP.NCorrFP import NCorrFP
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import gaussian_kde, norm
@@ -14,7 +14,7 @@ def test_knn():
     scheme = NCorrFP(gamma=5, fingerprint_bit_length=16)
     data = "datasets/breast_cancer_full.csv"
     fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=101, recipient_id=4,
-                                          outfile='NCorrFP_scheme/outfiles/fp_data_blind_corr_inv_node_101_g5.csv',
+                                          outfile='NCorrFP/outfiles/fp_data_blind_corr_inv_node_101_g5.csv',
                                           correlated_attributes=['inv-nodes', 'node-caps'])
 
     suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
@@ -27,7 +27,7 @@ def knn_adult_census():
     scheme = NCorrFP(gamma=10, fingerprint_bit_length=32)
 
     fingerprinted_data = scheme.insertion('adult', primary_key_name='Id', secret_key=100, recipient_id=4,
-                                          outfile='NCorrFP_scheme/outfiles/adult_fp_acc_wc_en_100.csv',
+                                          outfile='NCorrFP/outfiles/adult_fp_acc_wc_en_100.csv',
                                           correlated_attributes=['relationship', 'marital-status', 'occupation', 'workclass', 'education-num'])
     suspect = scheme.detection(fingerprinted_data, secret_key=100, primary_key='Id',
                                correlated_attributes=['relationship', 'marital-status', 'occupation', 'workclass',
@@ -37,7 +37,7 @@ def knn_adult_census():
 def test_vertical_attack_bc():
     scheme = NCorrFP(gamma=1, fingerprint_bit_length=8)
     fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=601, recipient_id=4,
-                                          outfile='NCorrFP_scheme/outfiles/fp_data_blind_corr_all_attributes.csv',
+                                          outfile='NCorrFP/outfiles/fp_data_blind_corr_all_attributes.csv',
                                           correlated_attributes=['age', 'menopause', 'inv-nodes', 'node-caps'])
     fingerprinted_data = fingerprinted_data.drop(['age'], axis=1)
     suspect = scheme.detection(fingerprinted_data, secret_key=601, primary_key='Id',
@@ -51,7 +51,7 @@ def test_vertical_adult():
     scheme = NCorrFP(gamma=20, fingerprint_bit_length=32)
 
     fingerprinted_data = scheme.insertion('adult', primary_key_name='Id', secret_key=100, recipient_id=4,
-                                          outfile='NCorrFP_scheme/outfiles/adult_fp_acc_wc_en_100.csv',
+                                          outfile='NCorrFP/outfiles/adult_fp_acc_wc_en_100.csv',
                                           correlated_attributes=['relationship', 'marital-status', 'occupation',
                                                                  'workclass', 'education-num'])
     fingerprinted_data = fingerprinted_data[["Id", "age", "workclass","fnlwgt","education","education-num",
@@ -69,7 +69,7 @@ def test_flipping_bc():
     scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
 
     fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=100, recipient_id=4,
-                                          outfile='NCorrFP_scheme/outfiles/adult_fp_acc_wc_en_100.csv',
+                                          outfile='NCorrFP/outfiles/adult_fp_acc_wc_en_100.csv',
                                           correlated_attributes=['age', 'menopause', 'inv-nodes', 'node-caps'])
     attack = attacks.bit_flipping_attack.BitFlippingAttack()
     attacked_data = attack.run(fingerprinted_data, 0.01)
@@ -82,7 +82,7 @@ def test_flipping_adult():
     scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
 
     fingerprinted_data = scheme.insertion('adult', primary_key_name='Id', secret_key=100, recipient_id=4,
-                                          outfile='NCorrFP_scheme/outfiles/adult_fp_acc_wc_en_100.csv',
+                                          outfile='NCorrFP/outfiles/adult_fp_acc_wc_en_100.csv',
                                           correlated_attributes=['relationship', 'marital-status', 'occupation',
                                                                  'workclass', 'education-num'])
     attack = attacks.bit_flipping_attack.BitFlippingAttack()
@@ -97,7 +97,7 @@ def test_demo():
     data = "datasets/breast_cancer_full.csv"
     fingerprinted_data, iter_log = scheme.demo_insertion('breast-cancer', primary_key_name='Id', secret_key=501,
                                                          recipient_id=4,
-                                          outfile='NCorrFP_scheme/outfiles/fp_data_blind_corr_all_attributes.csv',
+                                          outfile='NCorrFP/outfiles/fp_data_blind_corr_all_attributes.csv',
                                           correlated_attributes=['age', 'menopause', 'inv-nodes', 'node-caps'])
     #
     suspect, d_iter_log = scheme.demo_detection(fingerprinted_data, secret_key=501, primary_key='Id',
@@ -110,10 +110,10 @@ def test_demo():
 
 def knn_multi_corr():
     # code to replicate fingerprint embedding with NCorrFP scheme
-    from NCorrFP_scheme.NCorrFP import NCorrFP
+    from NCorrFP.NCorrFP import NCorrFP
     scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
     fingerprinted_data = scheme.insertion('breast-cancer', primary_key_name='Id', secret_key=100, recipient_id=4,
-                                          outfile='NCorrFP_scheme/outfiles/fp_data_multicorr_100.csv',
+                                          outfile='NCorrFP/outfiles/fp_data_multicorr_100.csv',
                                           correlated_attributes=[['age', 'menopause'], ['inv-nodes', 'node-caps']])
 
     suspect = scheme.detection(fingerprinted_data, secret_key=100, primary_key='Id',
@@ -252,13 +252,13 @@ def test_gower_distance():
 
 def test_detection_continuous():
     scheme = NCorrFP(gamma=2, fingerprint_bit_length=32, k=100, number_of_recipients=10, fingerprint_code_type='hash')
-    original_path = "NCorrFP_scheme/test/test_data/synthetic_1000_3_continuous.csv"
+    original_path = "NCorrFP/test/test_data/synthetic_1000_3_continuous.csv"
     original = pd.read_csv(original_path)
     correlated_attributes = ['X', 'Y']
     recipient = 2
     fingerprinted_data = scheme.insertion(original_path, primary_key_name='Id', secret_key=101, recipient_id=recipient,
                                           correlated_attributes=correlated_attributes, save_computation=True,
-                                          outfile='NCorrFP_scheme/test/out_data/test_id{}.csv'.format(recipient))
+                                          outfile='NCorrFP/test/out_data/test_id{}.csv'.format(recipient))
     suspect = scheme.detection(fingerprinted_data, secret_key=101, primary_key='Id',
                                correlated_attributes=correlated_attributes,
                                original_columns=["X", 'Y', 'Z'])
@@ -274,7 +274,7 @@ if __name__ == '__main__':
     # new_values = sample_from_dense_areas(data, exclude_percent=0.1, num_samples=20)
     # print("New sampled values (from less dense areas):", new_values)
     #test_gower_distance()
-    #NCorrFP_scheme.NCorrFP.plot_runtime()
+    #NCorrFP.NCorrFP.plot_runtime()
     #test_detection_continuous()
     data = datasets.Adult()
     scheme = NCorrFP(gamma=2, fingerprint_bit_length=64, k=100, number_of_recipients=10, fingerprint_code_type='hash')

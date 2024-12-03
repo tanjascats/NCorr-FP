@@ -1,4 +1,4 @@
-from NCorrFP_scheme.NCorrFP import NCorrFP
+from NCorrFP.NCorrFP import NCorrFP
 from fp_codes import tardos
 import pandas as pd
 import numpy as np
@@ -9,7 +9,7 @@ from utils import *
 def insert_fingerprints(n_recipients, secret_key, gamma=1, fp_bit_len=16, code_type='tardos'):
     scheme = NCorrFP(gamma=gamma, fingerprint_bit_length=fp_bit_len, k=100, fingerprint_code_type=code_type,
                      number_of_recipients=n_recipients)
-    original_path = "NCorrFP_scheme/test/test_data/synthetic_1000_3_continuous.csv"
+    original_path = "NCorrFP/test/test_data/synthetic_1000_3_continuous.csv"
     correlated_attributes = ['X', 'Y']
     for r in range(n_recipients):
         scheme.insertion(original_path, primary_key_name='Id', secret_key=secret_key, recipient_id=r,
