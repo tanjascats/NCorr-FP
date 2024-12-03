@@ -354,7 +354,7 @@ class Demo():
         #print('Neighbours values:' + str(list(self.relation.iloc[self.insertion_iter_log[iter]['neighbors']]['X'])))
         print('\nNow we look at the values of attribute ' + str(
             self.insertion_iter_log[iter]['attribute']) + ' in this neighbourhood, and among these is our potential new value.')
-        print('Target values:' + str(list(self.relation.iloc[self.insertion_iter_log[iter]['neighbors']][self.insertion_iter_log[iter]['attribute']])))
+ #       print('Target values:' + str(list(self.relation.iloc[self.insertion_iter_log[iter]['neighbors']][self.insertion_iter_log[iter]['attribute']])))
         print(
             'For this we estimate the distribution of these target values (see the plot below) before sampling one new value.')
         print(
@@ -369,8 +369,43 @@ class Demo():
             print(
                 'In this case, mark bit is {}, therefore we sample from tails of distribution of the variable {} in the neighbourhood. The thresholds are set by an arbitrary percentile (here we use 75th)'.format(
                     mark_bit, self.insertion_iter_log[iter]['attribute']))
-        sample_from_area(data=list(self.relation.iloc[self.insertion_iter_log[iter]['neighbors']][self.insertion_iter_log[iter]['attribute']]), percent=0.75,
-                         dense=mark_bit, plot=True, seed=self.insertion_iter_log[iter]['seed'])
+        print('The new value is: ', self.insertion_iter_log[iter]['new_value'])
+        if self.insertion_iter_log[iter]['attribute'] not in self.data.categorical_attributes:
+            sample_from_area(data=list(self.relation.iloc[self.insertion_iter_log[iter]['neighbors']][self.insertion_iter_log[iter]['attribute']]), percent=0.75,
+                             dense=mark_bit, plot=True, seed=self.insertion_iter_log[iter]['seed'])
+        else:
+            # Prepare data for plotting
+            neighbourhood = list(self.data.dataframe.iloc[self.insertion_iter_log[iter]['neighbors']][self.insertion_iter_log[iter]['attribute']])
+            value_counts = Counter(neighbourhood)
+            sorted_items = sorted(value_counts.items(), key=lambda x: (-x[1], x[0]), reverse=True)
+            categories = [item[0] for item in sorted_items]
+            frequencies = [item[1] for item in sorted_items]
+            bar_colors = ['orange' if is_from_most_frequent(cat, neighbourhood, 0.75) else 'blue' for cat in categories]
+
+            # Plotting
+            bars = plt.bar(categories, frequencies, color=bar_colors, edgecolor="black", linewidth=1)
+
+            # Highlight the sampled value
+            for bar, cat in zip(bars, categories):
+                if cat == self.insertion_iter_log[iter]['new_value']:
+                    bar.set_edgecolor("red")
+                    bar.set_linewidth(2)
+                    # bar.set_hatch("//")  # Add a pattern to make it bold visually
+
+            # Customize plot
+            plt.axhline(0, color="black", linewidth=0.8)
+            plt.xlabel("Values", fontsize=12)
+            plt.ylabel("Frequency", fontsize=12)
+            plt.title(f"Categorical Value Frequencies (Sampled Value: {self.insertion_iter_log[iter]['new_value']})", fontsize=14)
+            plt.xticks(rotation=45, ha="right", fontsize=10)
+            plt.yticks(fontsize=10)
+            plt.legend(handles=[
+                plt.Line2D([0], [0], color='orange', lw=4, label='Most Frequent'),
+                plt.Line2D([0], [0], color='blue', lw=4, label='Less Frequent'),
+                plt.Line2D([0], [0], color='red', lw=2, label='Sampled Value', linestyle='--')],
+                loc='upper right')
+            plt.tight_layout()
+            plt.show()
         print(
             "The sampled continuous value is rounded to the closest existing value from the data (to avoid perceptibility of marks) and is: " + str(
                 self.insertion_iter_log[iter]['new_value']))
@@ -381,7 +416,7 @@ class Demo():
         data = target_values
         kde = gaussian_kde(data)
         # Create a range of values to evaluate the PDF
-        x = np.linspace(min(data), max(data), 1000)
+        x = np.linspace(min(data), max(data), 100)
         pdf_values = kde(x)
 
         threshold = np.percentile(pdf_values, 0.75 * 100)
@@ -463,7 +498,6 @@ class Demo():
         # Display the plot
         plt.show()
 
-
     def show_detection_iteration(self, iteration):
         print("Detecting from record at idx: " + str(self.detection_iter_log[iteration]['row_index']))
         print("Detecting from attribute: " + str(self.detection_iter_log[iteration]['attribute']))
@@ -473,48 +507,63 @@ class Demo():
         print('Fingerpritned value: ' + str(fingerprinted_value))
         target_values_det = self.fingerprinted_data.iloc[self.detection_iter_log[iteration]['neighbors']][
             self.detection_iter_log[iteration]['attribute']].tolist()
+#        print("----------------------------------------------------------")
+#        print("Obtaining neighbourhood....")
+#        print('Target values:' + str(target_values_det))
         print("----------------------------------------------------------")
- #       print("Obtaining neighbourhood....")
- #       print('Target values:' + str(target_values_det))
- #       print("----------------------------------------------------------")
+        # numerical attribute
+        if self.detection_iter_log[iteration]['attribute'] not in self.data.categorical_attributes:
+      #      sample_from_area(data=list(self.relation.iloc[self.insertion_iter_log[iter]['neighbors']][
+      #                                     self.insertion_iter_log[iter]['attribute']]), percent=0.75,
+      #                       dense=mark_bit, plot=True, seed=self.insertion_iter_log[iter]['seed'])
 
-        x_det, pdf_values_det, masked_pdf_det = self.values_for_plot_distribution(target_values_det)
-        target_values_ins = list(self.relation.iloc[self.insertion_iter_log[iteration]['neighbors']][self.insertion_iter_log[iteration]['attribute']])
-        x_ins, pdf_values_ins, masked_pdf_ins = self.values_for_plot_distribution(target_values_ins)
+            x_det, pdf_values_det, masked_pdf_det = self.values_for_plot_distribution(target_values_det)
+            target_values_ins = list(self.relation.iloc[self.insertion_iter_log[iteration]['neighbors']][self.insertion_iter_log[iteration]['attribute']])
+            x_ins, pdf_values_ins, masked_pdf_ins = self.values_for_plot_distribution(target_values_ins)
 
-        fig, axs = plt.subplots(1, 2, sharey=True, sharex=True, figsize=(10, 4))
+            fig, axs = plt.subplots(1, 2, sharey=True, sharex=True, figsize=(10, 4))
 
-        axs[0].plot(x_det, pdf_values_det, label='Original PDF\n (estimate)')
-        axs[0].plot(x_det, masked_pdf_det, label='Modified PDF\n ({}th percentile)'.format(int(100 * 0.75)))
-        axs[0].hist(target_values_det, bins=10, density=True, alpha=0.3, label='Neighbourhood\n data points')
-        axs[0].scatter(fingerprinted_value, 0, color='red', label='Marked value', zorder=5)
-        axs[0].set_ylabel('Density')
-        axs[0].set_xlabel('Values')
-        axs[0].set_title('Fingerprinted data')
-        axs[0].legend(prop={'size': 8})
+            axs[0].plot(x_det, pdf_values_det, label='Original PDF\n (estimate)')
+            axs[0].plot(x_det, masked_pdf_det, label='Modified PDF\n ({}th percentile)'.format(int(100 * 0.75)))
+            axs[0].hist(target_values_det, bins=10, density=True, alpha=0.3, label='Neighbourhood\n data points')
+            axs[0].scatter(fingerprinted_value, 0, color='red', label='Marked value', zorder=5)
+            axs[0].set_ylabel('Density')
+            axs[0].set_xlabel('Values')
+            axs[0].set_title('Fingerprinted data')
+            axs[0].legend(prop={'size': 8})
 
-        axs[1].plot(x_ins, pdf_values_ins, label='Original PDF\n (estimate)')
-        axs[1].plot(x_ins, masked_pdf_ins, label='Modified PDF\n ({}th percentile)'.format(int(100 * 0.75)))
-        axs[1].hist(target_values_ins, bins=10, density=True, alpha=0.3, label='Neighbourhood\n data points')
-        axs[1].scatter(self.insertion_iter_log[iteration]['new_value'], 0, color='red', label='Marked value', zorder=5)
-        axs[1].set_ylabel('Density')
-        axs[1].set_xlabel('Values')
-        axs[1].set_title('Original data')
-        axs[1].legend(prop={'size': 8})
+            axs[1].plot(x_ins, pdf_values_ins, label='Original PDF\n (estimate)')
+            axs[1].plot(x_ins, masked_pdf_ins, label='Modified PDF\n ({}th percentile)'.format(int(100 * 0.75)))
+            axs[1].hist(target_values_ins, bins=10, density=True, alpha=0.3, label='Neighbourhood\n data points')
+            axs[1].scatter(self.insertion_iter_log[iteration]['new_value'], 0, color='red', label='Marked value', zorder=5)
+            axs[1].set_ylabel('Density')
+            axs[1].set_xlabel('Values')
+            axs[1].set_title('Original data')
+            axs[1].legend(prop={'size': 8})
+        # categorical attribute
+        else:
+            pass
 
         print(
             "\n--> Observing the distribution of target attribute {} below...".format(self.detection_iter_log[iteration]['attribute']))
-        message = ' (i.e. tails of distribution)' if self.detection_iter_log[iteration]['mark_bit'] == 0 else ' (i.e. in densest area)'
+        if self.detection_iter_log[iteration]['mark_bit'] == 0:
+            message = ' (i.e. tails of distribution)'
+        elif self.detection_iter_log[iteration]['mark_bit'] == 1:
+            message = ' (i.e. in densest area)'
+        else:
+            message =' (i.e. not decided due to small variability of the sampling sapce)'
         print("Mark bit (where in distribution falls the target value?): " + str(
             self.detection_iter_log[iteration]['mark_bit']) + message)
         print("Mask bit (from PRNG): " + str(self.detection_iter_log[iteration]['mask_bit']))
         print("Fingerprint bit index (from PRNG): " + str(self.detection_iter_log[iteration]['fingerprint_idx']))
-        print("Fingerprint bit value (mark bit xor mask bit): " + str(self.detection_iter_log[iteration]['fingerprint_bit']))
-
-        if self.detection_iter_log[iteration]['fingerprint_bit'] == self.fingerprint[self.detection_iter_log[iteration]['fingerprint_idx']]:
-            print('\nFingerprint bit CORRECT :)')
+        if self.detection_iter_log[iteration]['fingerprint_bit'] == -1:
+            print("Fingerprint counts not updated.")
         else:
-            print('\nFingerprint bit FALSE :( (it is just a wrong vote)')
+            print("Fingerprint bit value (mark bit xor mask bit): " + str(self.detection_iter_log[iteration]['fingerprint_bit']))
+            if self.detection_iter_log[iteration]['fingerprint_bit'] == self.fingerprint[self.detection_iter_log[iteration]['fingerprint_idx']]:
+                print('\nFingerprint bit CORRECT :)')
+            else:
+                print('\nFingerprint bit FALSE :( (it is just a wrong vote)')
 
         self.plot_count_updates(self.detection_iter_log[iteration]['count_state'], self.fingerprint)
         print(
@@ -525,7 +574,8 @@ class Demo():
         # find all iterations with errors in detection
         errors = []
         for iteration in range(len(self.detection_iter_log)):
-            if self.detection_iter_log[iteration]['fingerprint_bit'] != self.fingerprint[self.detection_iter_log[iteration]['fingerprint_idx']]:
+            if self.detection_iter_log[iteration]['fingerprint_bit'] != self.fingerprint[self.detection_iter_log[iteration]['fingerprint_idx']] \
+                    and self.detection_iter_log[iteration]['fingerprint_bit'] != -1:
                 errors.append(iteration)
         return errors
 

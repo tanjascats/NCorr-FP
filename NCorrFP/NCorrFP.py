@@ -215,7 +215,7 @@ def is_from_dense_area(sample, data, percent):
     try:
         kde = gaussian_kde(data)
     except np.linalg.LinAlgError as e:  # a strictly uniform distribution of data
-        return data[0]
+        return True
 
     # Create a range of values to evaluate the PDF
     x = np.linspace(min(data), max(data), 100)  # 1000)
@@ -225,7 +225,7 @@ def is_from_dense_area(sample, data, percent):
     threshold = np.percentile(pdf_values, percent * 100)
     mask = (pdf_values >= threshold)  # mask for the dense area
     # Dictionary so that we can query the area with the sample point
-    area = dict(zip(np.round(x, 4), mask))
+    area = dict(zip(np.round(x, 6), mask))
     # Round the key to the closest one to the sample
     k = min(area.keys(), key=lambda y: abs(y - sample))
 
@@ -312,8 +312,9 @@ def mark_categorical_value(neighbourhood, mark_bit, percentile=0.75):
         most_frequent.append(less_frequent.pop())
     elif not less_frequent:
         less_frequent.append(most_frequent.pop())
-    print(most_frequent)
-    print(less_frequent)
+#    print(most_frequent)
+#    print(less_frequent)
+    # most_frequent, less_frequent = get_frequency_groups()
     # Sample from the appropriate group based on the mark bit
     if mark_bit == 1:
         return random.choices(most_frequent, weights=[value_counts[val] for val in most_frequent])[0]
@@ -374,6 +375,69 @@ def get_mark_bit_old(is_categorical, attribute_val, neighbours, relation_fp, att
     return mark_bit
 
 
+def is_from_most_frequent(sample, neighbourhood, percentile):
+    '''
+
+    Args:
+        sample:
+        neighbourhood:
+        percentile:
+
+    Returns:
+
+    '''
+    # Calculate frequencies
+#    possible_values = []
+#    indices = list(relation.index)
+#    for neighb in neighbours:
+#        neighb = indices[
+#            neighb]  # balltree resets the index so querying by index only fails for horizontal attacks, so we have to keep track of indices like this
+#        possible_values.append(relation.at[neighb, attr_name])
+
+    value_counts = Counter(neighbourhood)
+    total_count = sum(value_counts.values())
+
+    # If only one unique value exists, return 1
+    if len(value_counts) == 1:
+        return True
+
+    # Sort values by frequency (ascending)
+    sorted_items = sorted(value_counts.items(), key=lambda x: (-x[1], x[0]), reverse=True)
+
+    # Divide values into most and less frequent
+    cumulative_sum = 0
+    less_frequent = []
+
+    for i, (val, count) in enumerate(sorted_items):
+        if cumulative_sum / total_count >= percentile and i < len(sorted_items) - 1:
+            break
+        less_frequent.append(val)
+        cumulative_sum += count
+
+    # Handle ties
+    last_count = sorted_items[len(less_frequent) - 1][1]
+    for val, count in sorted_items[len(less_frequent):]:
+        if count == last_count and len(less_frequent) < len(sorted_items) - 1:
+            less_frequent.append(val)
+        else:
+            break
+
+    # Most frequent group
+    most_frequent = [val for val, _ in sorted_items if val not in less_frequent]
+
+    # Ensure at least one value remains in each group
+    if not most_frequent:
+        most_frequent.append(less_frequent.pop())
+    elif not less_frequent:
+        less_frequent.append(most_frequent.pop())
+
+    # Determine the mark bit
+    if sample in most_frequent:
+        return True
+    else:
+        return False
+
+
 def get_mark_bit(is_categorical, attribute_val, neighbours, relation_fp, attr_name, percentile=0.75):
     """
     Determines whether the given value corresponds to mark bit 1 (most frequent group)
@@ -385,65 +449,17 @@ def get_mark_bit(is_categorical, attribute_val, neighbours, relation_fp, attr_na
     Returns:
         int: 1 if the value is in the most frequent group, 0 if it is in the less frequent group.
     """
-    if not isinstance(relation_fp, pd.DataFrame):
-        relation_fp = relation_fp.dataframe
+#    if not isinstance(relation_fp, pd.DataFrame):
+#        relation_fp = relation_fp.dataframe
 
-    indices = list(relation_fp.index)
     if is_categorical:
-        # Calculate frequencies
-        possible_values = []
-        for neighb in neighbours:
-            neighb = indices[
-                neighb]  # balltree resets the index so querying by index only fails for horizontal attacks, so we have to keep track of indices like this
-            possible_values.append(relation_fp.at[neighb, attr_name])
-
-        value_counts = Counter(possible_values)
-        total_count = sum(value_counts.values())
-
-        # If only one unique value exists, return 1 (most frequent) as there's no distinction
-        if len(value_counts) == 1:
-            mark_bit = 1
-
-        # Sort values by frequency (ascending)
-        sorted_items = sorted(value_counts.items(), key=lambda x: (-x[1], x[0]), reverse=True)
-
-        # Divide values into most and less frequent
-        cumulative_sum = 0
-        less_frequent = []
-
-        for i, (val, count) in enumerate(sorted_items):
-            if cumulative_sum / total_count >= percentile and i < len(sorted_items) - 1:
-                break
-            less_frequent.append(val)
-            cumulative_sum += count
-
-        # Handle ties
-        last_count = sorted_items[len(less_frequent) - 1][1]
-        for val, count in sorted_items[len(less_frequent):]:
-            if count == last_count and len(less_frequent) < len(sorted_items) - 1:
-                less_frequent.append(val)
-            else:
-                break
-
-        # Most frequent group
-        most_frequent = [val for val, _ in sorted_items if val not in less_frequent]
-
-        # Ensure at least one value remains in each group
-        if not most_frequent:
-            most_frequent.append(less_frequent.pop())
-        elif not less_frequent:
-            less_frequent.append(most_frequent.pop())
-
-        # Determine the mark bit
-        if attribute_val in most_frequent:
-            mark_bit = 1
-        else:
-            mark_bit = 0
+        mark_bit = 1 if is_from_most_frequent(sample=attribute_val, neighbourhood=neighbours, percentile=percentile) else 0
     else:
         # recover whether the attr_val comes from the dense area or not
         mark_bit = 1 if is_from_dense_area(sample=attribute_val, data=neighbours, percent=percentile) else 0
 
     return mark_bit
+
 
 def create_hash_fingerprint(secret_key, recipient_id, fingerprint_bit_length):
     """
@@ -587,13 +603,7 @@ class NCorrFP():
             fingerprint: ndarray = np.array(list(fingerprint.bin), dtype=int)
 
         suspects = None
-        if self.fingerprint_code_type == 'hash':
-            suspects = decode_hash_fingerprint(fingerprint, secret_key, self.number_of_recipients)
-        elif self.fingerprint_code_type == 'tardos':
-            # first we check direct matching 
-            #tardos_codes.decode_fingerprint(fingerprint, secret_key, self.number_of_recipients)
-            #exact_match(fingerprint)
-            suspects = tardos.score_users(fingerprint, secret_key, self.number_of_recipients)
+        suspects = decode_hash_fingerprint(fingerprint, secret_key, self.number_of_recipients)
 
         return suspects  # todo: return colluders
 
@@ -750,9 +760,11 @@ class NCorrFP():
                 neighbourhood = relation.iloc[neighbours][attr_name].tolist()
                 if attr_name in categorical_attributes:
                     marked_attribute = mark_categorical_value(neighbourhood, mark_bit)
+                    iteration['new_value'] = label_encoders[attr_name].inverse_transform([marked_attribute])[0]
                 else:
                     marked_attribute = mark_continuous_value(neighbourhood, mark_bit, seed=seed)
-                iteration['new_value'] = marked_attribute
+                    iteration['new_value'] = marked_attribute
+
                 marking_end = time.time()
                 time_profile['mark_time'] += marking_end - marking_start
 
@@ -870,7 +882,6 @@ class NCorrFP():
                 mask_bit = random.randint(0, _MAXINT) % 2
                 iteration['mask_bit'] = mask_bit
 
-
                 corr_group_index = next((i for i, sublist in enumerate(correlated_attributes) if attr_name in sublist), None)
                 if corr_group_index is not None:  # if attr_name is in correlated attributes
                     other_attributes = correlated_attributes[corr_group_index].tolist().copy()
@@ -906,16 +917,21 @@ class NCorrFP():
                 iteration['dist'] = dist
 
                 # check the frequencies of the values
-                neighbourhood = relation_fp.dataframe.iloc[neighbours][attr_name].tolist()
-                mark_bit = get_mark_bit(is_categorical=(attr_name in categorical_attributes),
-                                        attribute_val=attribute_val, neighbours=neighbourhood,
-                                        relation_fp=relation_fp, attr_name=attr_name)
-                fingerprint_bit = (mark_bit + mask_bit) % 2
-                count[fingerprint_idx][fingerprint_bit] += 1
+                neighbourhood = relation_fp.dataframe.iloc[neighbours][attr_name].tolist()  # target values
+                if len(set(neighbourhood)) == 1:
+                    # the mark bit is undecided so we don't update the votes
+                    iteration['mark_bit'] = -1
+                    iteration['fingerprint_bit'] = -1
+                else:
+                    mark_bit = get_mark_bit(is_categorical=(attr_name in categorical_attributes),
+                                            attribute_val=attribute_val, neighbours=neighbourhood,
+                                            relation_fp=relation_fp, attr_name=attr_name)
+                    fingerprint_bit = (mark_bit + mask_bit) % 2
+                    count[fingerprint_idx][fingerprint_bit] += 1
+                    iteration['mark_bit'] = mark_bit
+                    iteration['fingerprint_bit'] = fingerprint_bit
 
-                iteration['count_state'] = copy.deepcopy(count)  # this returns the final counts for each step ??
-                iteration['mark_bit'] = mark_bit
-                iteration['fingerprint_bit'] = fingerprint_bit
+                iteration['count_state'] = copy.deepcopy(count)
 
                 self.detection_iter_log.append(iteration)
 
@@ -939,13 +955,16 @@ class NCorrFP():
         # todo: adjust this part for the new types of fingerprint codes
         suspects = self.detect_potential_traitor(fingerprint_template, secret_key)
         print("The fingerprint is matched with probabilities:")
-        print(suspects)
+#       print(suspects)
         print(sorted(suspects.items(), key=lambda item: item[1], reverse=True))
 #        recipient_no = self.detect_potential_traitor(fingerprint_template, secret_key)
 #        if recipient_no >= 0:
 #            print("Fingerprint belongs to Recipient " + str(recipient_no))
 #        else:
 #            print("None suspected.")
+        if self.fingerprint_code_type == 'tardos':
+            collusion_suspects = tardos.score_users(fingerprint_template, secret_key, self.number_of_recipients)
+            print('Collusion scores: ', collusion_suspects)
         runtime = time.time() - start
         if runtime < 1:
             print("Runtime: " + str(int(runtime)*1000) + " ms.")
