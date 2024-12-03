@@ -1,10 +1,5 @@
 import random
-
-#from deprecated import deprecated
-import functools
-import inspect
-
-
+from collections import Counter
 import matplotlib.pyplot as plt
 from numpy import ndarray
 from scipy.stats import gaussian_kde
@@ -237,7 +232,7 @@ def is_from_dense_area(sample, data, percent):
     return area[k]
 
 
-def mark_categorical_value(neighbours, mark_bit):
+def mark_categorical_value_old(neighbours, mark_bit):
     """
     Marks a categorical value based on the frequencies in the neighbourhood and the mark bit.
     If mark bit is 1, the new value will be the most frequent one in the neighbourhood, otherwise sampling from
@@ -268,6 +263,64 @@ def mark_categorical_value(neighbours, mark_bit):
     return marked_attribute
 
 
+def mark_categorical_value(neighbourhood, mark_bit, percentile=0.75):
+    """
+    Marks a categorical value based on neighbourhood frequencies and the mark bit.
+
+    Args:
+        neighbourhood (list): List of categorical values in the neighbourhood.
+        mark_bit (int): 1 to sample from the most frequent group, 0 to sample from the remaining values.
+        percentile (float): Threshold for splitting into frequent and less frequent groups (0-1).
+
+    Returns:
+        str: The sampled value based on the mark bit and neighbourhood distribution.
+    """
+    # Calculate frequencies
+    value_counts = Counter(neighbourhood)
+    total_count = sum(value_counts.values())
+
+    # If only one unique value exists, return it regardless of the mark bit
+    if len(value_counts) == 1:
+        return next(iter(value_counts.keys()))
+
+    # Sort values by frequency (ascending)
+    sorted_items = sorted(value_counts.items(), key=lambda x: (-x[1], x[0]), reverse=True)
+
+    # Divide values into most and least frequent
+    cumulative_sum = 0
+    less_frequent = []
+
+    for i, (value, count) in enumerate(sorted_items):
+        if cumulative_sum / total_count >= percentile and i < len(sorted_items) - 1:
+            break
+        less_frequent.append(value)
+        cumulative_sum += count
+
+    # Handle ties
+    last_count = sorted_items[len(less_frequent) - 1][1]
+    for value, count in sorted_items[len(less_frequent):]:
+        if count == last_count and len(less_frequent) < len(sorted_items) - 1:
+            less_frequent.append(value)
+        else:
+            break
+
+    # Most frequent group
+    most_frequent = [value for value, _ in sorted_items if value not in less_frequent]
+
+    # Ensure at least one value remains in each group
+    if not most_frequent:
+        most_frequent.append(less_frequent.pop())
+    elif not less_frequent:
+        less_frequent.append(most_frequent.pop())
+    print(most_frequent)
+    print(less_frequent)
+    # Sample from the appropriate group based on the mark bit
+    if mark_bit == 1:
+        return random.choices(most_frequent, weights=[value_counts[val] for val in most_frequent])[0]
+    else:
+        return random.choices(less_frequent, weights=[value_counts[val] for val in less_frequent])[0]
+
+
 def mark_continuous_value(neighbours, mark_bit, percentile=0.75, round_to_existing=True, plot=False, seed=0):
     """
     Marks a continuous value based on the neighbourhood of its record in the dataset and the mark bit.
@@ -293,7 +346,7 @@ def mark_continuous_value(neighbours, mark_bit, percentile=0.75, round_to_existi
     return marked_attribute
 
 
-def get_mark_bit(is_categorical, attribute_val, neighbours, relation_fp, attr_name, percentile=0.75):
+def get_mark_bit_old(is_categorical, attribute_val, neighbours, relation_fp, attr_name, percentile=0.75):
     if not isinstance(relation_fp, pd.DataFrame):
         relation_fp = relation_fp.dataframe
     indices = list(relation_fp.index)
@@ -320,6 +373,77 @@ def get_mark_bit(is_categorical, attribute_val, neighbours, relation_fp, attr_na
 
     return mark_bit
 
+
+def get_mark_bit(is_categorical, attribute_val, neighbours, relation_fp, attr_name, percentile=0.75):
+    """
+    Determines whether the given value corresponds to mark bit 1 (most frequent group)
+    or mark bit 0 (less frequent group).
+
+    Args:
+
+
+    Returns:
+        int: 1 if the value is in the most frequent group, 0 if it is in the less frequent group.
+    """
+    if not isinstance(relation_fp, pd.DataFrame):
+        relation_fp = relation_fp.dataframe
+
+    indices = list(relation_fp.index)
+    if is_categorical:
+        # Calculate frequencies
+        possible_values = []
+        for neighb in neighbours:
+            neighb = indices[
+                neighb]  # balltree resets the index so querying by index only fails for horizontal attacks, so we have to keep track of indices like this
+            possible_values.append(relation_fp.at[neighb, attr_name])
+
+        value_counts = Counter(possible_values)
+        total_count = sum(value_counts.values())
+
+        # If only one unique value exists, return 1 (most frequent) as there's no distinction
+        if len(value_counts) == 1:
+            mark_bit = 1
+
+        # Sort values by frequency (ascending)
+        sorted_items = sorted(value_counts.items(), key=lambda x: (-x[1], x[0]), reverse=True)
+
+        # Divide values into most and less frequent
+        cumulative_sum = 0
+        less_frequent = []
+
+        for i, (val, count) in enumerate(sorted_items):
+            if cumulative_sum / total_count >= percentile and i < len(sorted_items) - 1:
+                break
+            less_frequent.append(val)
+            cumulative_sum += count
+
+        # Handle ties
+        last_count = sorted_items[len(less_frequent) - 1][1]
+        for val, count in sorted_items[len(less_frequent):]:
+            if count == last_count and len(less_frequent) < len(sorted_items) - 1:
+                less_frequent.append(val)
+            else:
+                break
+
+        # Most frequent group
+        most_frequent = [val for val, _ in sorted_items if val not in less_frequent]
+
+        # Ensure at least one value remains in each group
+        if not most_frequent:
+            most_frequent.append(less_frequent.pop())
+        elif not less_frequent:
+            less_frequent.append(most_frequent.pop())
+
+        # Determine the mark bit
+        if attribute_val in most_frequent:
+            mark_bit = 1
+        else:
+            mark_bit = 0
+    else:
+        # recover whether the attr_val comes from the dense area or not
+        mark_bit = 1 if is_from_dense_area(sample=attribute_val, data=neighbours, percent=percentile) else 0
+
+    return mark_bit
 
 def create_hash_fingerprint(secret_key, recipient_id, fingerprint_bit_length):
     """
@@ -493,6 +617,7 @@ class NCorrFP():
             self.secret_key = secret_key
         # it is assumed that the first column in the dataset is the primary key
         if isinstance(dataset_name, datasets.Dataset):
+            self.dataset = dataset_name
             relation = dataset_name.dataframe.copy()
             primary_key_name = dataset_name.get_primary_key_attribute()
             if correlated_attributes is None:
@@ -507,7 +632,9 @@ class NCorrFP():
         tot_attributes = number_of_num_attributes + number_of_cat_attributes
         print("\tgamma: " + str(self.gamma) + "\n\tcorrelated attributes: " + str(correlated_attributes))
 
+        self.recipient_id = recipient_id
         fingerprint = self.create_fingerprint(recipient_id, secret_key)
+        self.fingerprint = fingerprint
         print("Inserting the fingerprint...\n")
 
         start = time.time()
@@ -681,6 +808,7 @@ class NCorrFP():
               "\n\tcorrelated attributes: " + str(correlated_attributes))
 
         relation_fp = read_data(dataset)
+        self.relation_fp = relation_fp
         # indices = list(relation_fp.dataframe.index)
         # number of numerical attributes minus primary key
         number_of_num_attributes = len(relation_fp.dataframe.select_dtypes(exclude='object').columns) - 1

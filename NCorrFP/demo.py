@@ -11,17 +11,20 @@ class Demo():
 
     def __init__(self, scheme):
         self.scheme = scheme
-        self.fingerprinted_data = None
+        self.secret_key = scheme.secret_key
+        self.recipient_id = scheme.recipient_id
+        self.fingerprint = scheme.fingerprint
+        self.fingerprinted_data = scheme.relation_fp.dataframe
+
         self.insertion_iter_log = scheme.insertion_iter_log
         self.detection_iter_log = scheme.detection_iter_log
-        self.primary_key_name = None
-        self.secret_key = None
-        self.recipient_id = None
-        self.dataset_name = None  # or path
-        self.correlated_attributes = None
-        self.original_columns = None
-        self.relation = None
-        self.fingerprint = None
+
+        self.data = scheme.dataset
+        self.primary_key_name = scheme.dataset.primary_key_attribute
+        self.dataset_name = scheme.dataset.name  # or path
+        self.correlated_attributes = scheme.dataset.correlated_attributes
+        self.original_columns = scheme.dataset.columns
+        self.relation = scheme.dataset.dataframe
 
     def eval(self, data, correlated_attributes, primary_key_name='Id', secret_key=101, recipient_id=4,
              show_messages=True):
@@ -348,7 +351,7 @@ class Demo():
                                               'attribute']) + ' is not a correlated attribute, so we are including all attributes to find the closest neighbourhood.')
         print('Neighbours idx: ' + str(self.insertion_iter_log[iter]['neighbors']))
         print('Neighbours dist: ' + str(self.insertion_iter_log[iter]['dist']))
-        print('Neighbours values:' + str(list(self.relation.iloc[self.insertion_iter_log[iter]['neighbors']]['X'])))
+        #print('Neighbours values:' + str(list(self.relation.iloc[self.insertion_iter_log[iter]['neighbors']]['X'])))
         print('\nNow we look at the values of attribute ' + str(
             self.insertion_iter_log[iter]['attribute']) + ' in this neighbourhood, and among these is our potential new value.')
         print('Target values:' + str(list(self.relation.iloc[self.insertion_iter_log[iter]['neighbors']][self.insertion_iter_log[iter]['attribute']])))
@@ -471,12 +474,12 @@ class Demo():
         target_values_det = self.fingerprinted_data.iloc[self.detection_iter_log[iteration]['neighbors']][
             self.detection_iter_log[iteration]['attribute']].tolist()
         print("----------------------------------------------------------")
-        print("Obtaining neighbourhood....")
-        print('Target values:' + str(target_values_det))
-        print("----------------------------------------------------------")
+ #       print("Obtaining neighbourhood....")
+ #       print('Target values:' + str(target_values_det))
+ #       print("----------------------------------------------------------")
 
         x_det, pdf_values_det, masked_pdf_det = self.values_for_plot_distribution(target_values_det)
-        target_values_ins = list(self.relation.iloc[self.iter_log[iteration]['neighbors']][self.iter_log[iteration]['attribute']])
+        target_values_ins = list(self.relation.iloc[self.insertion_iter_log[iteration]['neighbors']][self.insertion_iter_log[iteration]['attribute']])
         x_ins, pdf_values_ins, masked_pdf_ins = self.values_for_plot_distribution(target_values_ins)
 
         fig, axs = plt.subplots(1, 2, sharey=True, sharex=True, figsize=(10, 4))
@@ -493,7 +496,7 @@ class Demo():
         axs[1].plot(x_ins, pdf_values_ins, label='Original PDF\n (estimate)')
         axs[1].plot(x_ins, masked_pdf_ins, label='Modified PDF\n ({}th percentile)'.format(int(100 * 0.75)))
         axs[1].hist(target_values_ins, bins=10, density=True, alpha=0.3, label='Neighbourhood\n data points')
-        axs[1].scatter(self.iter_log[iteration]['new_value'], 0, color='red', label='Marked value', zorder=5)
+        axs[1].scatter(self.insertion_iter_log[iteration]['new_value'], 0, color='red', label='Marked value', zorder=5)
         axs[1].set_ylabel('Density')
         axs[1].set_xlabel('Values')
         axs[1].set_title('Original data')
@@ -556,7 +559,7 @@ class Demo():
                 self.detection_iter_log[iteration]['mark_bit']) + message)
 
             x_det, pdf_values_det, masked_pdf_det = self.values_for_plot_distribution(target_values_det)
-            target_values_ins = list(self.relation.iloc[self.iter_log[iteration]['neighbors']][self.iter_log[iteration]['attribute']])
+            target_values_ins = list(self.relation.iloc[self.insertion_iter_log[iteration]['neighbors']][self.insertion_iter_log[iteration]['attribute']])
             x_ins, pdf_values_ins, masked_pdf_ins = self.values_for_plot_distribution(target_values_ins)
 
             fig, axs = plt.subplots(1, 2, sharey=True, sharex=True, figsize=(10, 4))
@@ -573,7 +576,7 @@ class Demo():
             axs[1].plot(x_ins, pdf_values_ins, label='Original PDF\n (estimate)')
             axs[1].plot(x_ins, masked_pdf_ins, label='Modified PDF\n ({}th percentile)'.format(int(100 * 0.75)))
             axs[1].hist(target_values_ins, bins=10, density=True, alpha=0.3, label='Neighbourhood\n data points')
-            axs[1].scatter(self.iter_log[iteration]['new_value'], 0, color='red', label='Marked value', zorder=5)
+            axs[1].scatter(self.insertion_iter_log[iteration]['new_value'], 0, color='red', label='Marked value', zorder=5)
             axs[1].set_ylabel('Density')
             axs[1].set_xlabel('Values {}'.format(self.detection_iter_log[iteration]['attribute']))
             axs[1].set_title('Original data')
