@@ -111,8 +111,9 @@ def score_users(suspicious_code, secret_key, n_users):  # threshold
                 scores[user] += np.log(1 / p[pos]) if codebook[user, pos] == 1 else np.log(1 / (1 - p[pos]))
             else:  # if the bit is undecided (2), it assumes 0. Maybe there is room for improvement
                 scores[user] += np.log(1 / (1 - p[pos])) if codebook[user, pos] == 1 else np.log(1 / p[pos])
-    print("Scores: ", scores)
+#    print("Scores: ", scores)
     scores = {i: scores[i] for i in range(len(scores))}
+    scores = dict(sorted(scores.items(), key=lambda item: item[1], reverse=True))
 
     return scores
 
@@ -159,7 +160,7 @@ def check_exact_matching(code, secret_key, n_users):
     code_length = len(code)
 
     # generate tardos codebook to compare against
-    codebook, p = generate_codebook(n_users, code_length, secret_key)
+    codebook, p = generate_codebook(n_users=n_users, secret_key=secret_key, fp_len=code_length)
     print(codebook)
 
     for user in range(n_users):
@@ -167,6 +168,29 @@ def check_exact_matching(code, secret_key, n_users):
             return user
 
     return -1
+
+
+def exact_matching_scores(code, secret_key, n_users):
+    """
+        Calculates exact matching scores of a provided code for every code in the codebook.
+        Args:
+            code: code to check against the codebook
+            secret_key: owner's secret
+            n_users: total number of created fingerprints (dataset recipients)
+
+        Returns: (dict) recipient_id: matching_score
+
+        """
+    code_length = len(code)
+
+    # generate tardos codebook to compare against
+    codebook, p = generate_codebook(n_users=n_users, secret_key=secret_key, fp_len=code_length)
+
+    confidence = dict()
+    for user in range(n_users):
+        confidence[user] = np.sum(code == codebook[user]) / len(code)
+
+    return confidence
 
 
 def decode_fingerprint(fingerprint, secret_key, total_n_recipients):
@@ -195,7 +219,7 @@ def demo():
 
     # Generate Tardos codes
     # codes, p = generate_tardos_code(n_users, epsilon)
-    codes, p = generate_codebook(n_users, secret_key, fp_len)  # generates entire codebook
+    codes, p = generate_codebook(n_users=n_users, secret_key=secret_key, fp_len=fp_len)  # generates entire codebook
     print(p)
 
     # Assume we have a marked code that we suspect is the result of collusion

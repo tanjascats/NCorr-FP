@@ -592,9 +592,9 @@ class NCorrFP():
             print(fp_msg)
         return fingerprint
 
-    def detect_potential_traitor(self, fingerprint, secret_key):
+    def exact_matching_scores(self, fingerprint, secret_key):
         """
-        Detects a suspect from the extracted fingerprint
+        Returns matching scores for each reiccpient and the detected fingerprint
         :param fingerprint: string of characters describing binary representation of a fingerprint or a bitstring
         :param secret_key: owner's secret key used to fingerprint the data
         :return:
@@ -602,10 +602,14 @@ class NCorrFP():
         if isinstance(fingerprint, bitstring.BitArray):
             fingerprint: ndarray = np.array(list(fingerprint.bin), dtype=int)
 
-        suspects = None
-        suspects = decode_hash_fingerprint(fingerprint, secret_key, self.number_of_recipients)
+        scores = dict()
+        if self.fingerprint_code_type == 'hash':
+            scores = decode_hash_fingerprint(fingerprint, secret_key, self.number_of_recipients)
+        elif self.fingerprint_code_type == 'tardos':
+            scores = tardos.exact_matching_scores(fingerprint, secret_key, self.number_of_recipients)
+        scores = dict(sorted(scores.items(), key=lambda item: item[1], reverse=True))
 
-        return suspects  # todo: return colluders
+        return scores
 
     def insertion(self, dataset_name, recipient_id, secret_key, primary_key_name=None, outfile=None,
                   correlated_attributes=None, save_computation=True):
@@ -952,26 +956,25 @@ class NCorrFP():
         self.count = count
         print(count)
 
-        # todo: adjust this part for the new types of fingerprint codes
-        suspects = self.detect_potential_traitor(fingerprint_template, secret_key)
+        # first step in fp attribution: exact matching scores
+        exact_match_scores = self.exact_matching_scores(fingerprint_template, secret_key)
         print("The fingerprint is matched with probabilities:")
-#       print(suspects)
-        print(sorted(suspects.items(), key=lambda item: item[1], reverse=True))
+        print(exact_match_scores)
 #        recipient_no = self.detect_potential_traitor(fingerprint_template, secret_key)
 #        if recipient_no >= 0:
 #            print("Fingerprint belongs to Recipient " + str(recipient_no))
 #        else:
 #            print("None suspected.")
         if self.fingerprint_code_type == 'tardos':
-            collusion_suspects = tardos.score_users(fingerprint_template, secret_key, self.number_of_recipients)
-            print('Collusion scores: ', collusion_suspects)
+            collusion_scores = tardos.score_users(fingerprint_template, secret_key, self.number_of_recipients)
+            print('Collusion scores: ', collusion_scores)
         runtime = time.time() - start
         if runtime < 1:
             print("Runtime: " + str(int(runtime)*1000) + " ms.")
         else:
             print("Runtime: " + str(round(runtime, 2)) + " sec.")
         # todo: define a return statement -- just the most likely recipient? Probability vec?
-        return fingerprint_template, count, suspects
+        return fingerprint_template, count, exact_match_scores
 
     def detect_colluders(self, pirate_fingerprint, secret_key, threshold=1):
         """
@@ -1282,7 +1285,7 @@ class NCorrFP():
         print("Fingerprint detected: " + list_to_string(fingerprint_template))
         # print(count)
 
-        recipient_no = self.detect_potential_traitor(fingerprint_template, secret_key)
+        recipient_no = self.exact_matching_scores(fingerprint_template, secret_key)
         #if recipient_no >= 0:
         #    print("Fingerprint belongs to Recipient " + str(recipient_no))
         #else:

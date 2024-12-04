@@ -319,7 +319,7 @@ class Demo():
             print("Fingerprint detected: " + list_to_string(fingerprint_template))
         # print(count)
 
-        recipient_no = self.scheme.detect_potential_traitor(fingerprint_template_str, self.secret_key)
+        recipient_no = self.scheme.exact_matching_scores(fingerprint_template_str, self.secret_key)
         if show_messages:
             if recipient_no >= 0:
                 print("Fingerprint belongs to Recipient " + str(recipient_no))
