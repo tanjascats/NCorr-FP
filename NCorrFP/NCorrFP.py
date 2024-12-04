@@ -338,13 +338,19 @@ def mark_continuous_value(neighbours, mark_bit, percentile=0.75, round_to_existi
     Returns: new continuous value
     """
     sampling_from_dense = True if mark_bit == 1 else False
-    marked_attribute = sample_from_area(data=neighbours, percent=percentile, dense=sampling_from_dense, plot=plot,
+    sampled_value = sample_from_area(data=neighbours, percent=percentile, dense=sampling_from_dense, plot=plot,
                                         seed=seed)
 
-    if round_to_existing:  # we are choosing the closest existing value from the neighbourhood
-        marked_attribute = min(neighbours, key=lambda x: abs(x - marked_attribute))
-
-    return marked_attribute
+    if round_to_existing:  # we are choosing the closest existing value from the sampling area todo
+        closest_neighbours = sorted(list(set(neighbours)), key=lambda x: abs(x - sampled_value))
+        rounded_value = closest_neighbours.pop(0)
+        while is_from_dense_area(sample=rounded_value, data=neighbours, percent=percentile) != sampling_from_dense:
+            if len(closest_neighbours) == 0:
+                rounded_value = sorted(list(set(neighbours)), key=lambda x: abs(x - sampled_value))[0]
+                break
+            rounded_value = closest_neighbours.pop(0)
+        sampled_value = rounded_value
+    return sampled_value
 
 
 def get_mark_bit_old(is_categorical, attribute_val, neighbours, relation_fp, attr_name, percentile=0.75):

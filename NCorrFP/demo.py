@@ -507,9 +507,9 @@ class Demo():
         print('Fingerpritned value: ' + str(fingerprinted_value))
         target_values_det = self.fingerprinted_data.iloc[self.detection_iter_log[iteration]['neighbors']][
             self.detection_iter_log[iteration]['attribute']].tolist()
-#        print("----------------------------------------------------------")
-#        print("Obtaining neighbourhood....")
-#        print('Target values:' + str(target_values_det))
+        print("----------------------------------------------------------")
+        print("Obtaining neighbourhood....")
+        print('Target values:' + str(target_values_det))
         print("----------------------------------------------------------")
         # numerical attribute
         if self.detection_iter_log[iteration]['attribute'] not in self.data.categorical_attributes:

@@ -203,7 +203,13 @@ class BreastCancerWisconsin(Dataset):
 
 class Adult(Dataset):
     def __init__(self):
-        path = path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'adult_train_id_sample.csv')  # todo: change to full data
+        path = path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'adult_train_id.csv')
+        super().__init__(path=path, name='adult', target_attribute='income', primary_key_attribute='Id')
+
+
+class AdultSample(Dataset):
+    def __init__(self):
+        path = path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'adult_train_id_sample.csv')
         super().__init__(path=path, name='adult', target_attribute='income', primary_key_attribute='Id')
 
 
