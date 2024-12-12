@@ -1,7 +1,7 @@
 import sys
 sys.path.insert(0, '../dissertation')  # make the script standalone for running on server
 
-from datasets import CovertypeSample
+from datasets import Adult, CovertypeSample
 
 import argparse
 from itertools import product
@@ -27,12 +27,14 @@ def collusion(dataset='covertype-sample', save_results='robustness-collusion'):
     data = None
     if dataset == 'covertype-sample':
         data = CovertypeSample()
+    if dataset == 'adult':
+        data = Adult()
     if data is None:
         exit('Please provide a valid dataset name ({})'.format(datasets.__all__))
     print(data.dataframe.head(3))
 
     # --- Define parameters --- #
-    fp_params = {'gamma': [32],
+    fp_params = {'gamma': [2],
                  'k': [300],
                  'fingerprint_length': [128],# 128
                  'n_recipients': [20],
@@ -68,7 +70,7 @@ def collusion(dataset='covertype-sample', save_results='robustness-collusion'):
                 files_to_collude = []
                 for c in colluders:
                     param_string = '_'.join(f"{key}{value}" for key, value in param.items())
-                    file_name = data.name + "_" + param_string + '_id' + str(c) + '.csv'
+                    file_name = data.name + "_" + param_string + '_id' + str(c) + '_codetardos.csv'
                     file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), data.name + "-fp", file_name)
                     files_to_collude.append(file_path)
                     # todo append the results with colluder ids
@@ -85,7 +87,7 @@ def collusion(dataset='covertype-sample', save_results='robustness-collusion'):
 
                 # Run detection
                 scheme = NCorrFP(gamma=param['gamma'], fingerprint_bit_length=param['fingerprint_length'], k=param['k'],
-                                 number_of_recipients=param['n_recipients'], fingerprint_code_type='hash')
+                                 number_of_recipients=param['n_recipients'], fingerprint_code_type='tardos')
                 detected_fp, votes, suspect_probvec = scheme.detection(colluded_ds, secret_key=param['sk'],
                                                                        primary_key='Id',
                                                                        correlated_attributes=data.correlated_attributes,

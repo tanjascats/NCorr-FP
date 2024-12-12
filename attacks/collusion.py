@@ -3,6 +3,8 @@ from fp_codes import tardos
 import pandas as pd
 import numpy as np
 from utils import *
+from collections import Counter
+
 
 
 # testing naive approaches to collusion attack
@@ -53,6 +55,7 @@ def collude_datasetes_by_avg(dataset_paths):
 
     """
     Merges multiple DataFrames by averaging values where they disagree among any of the provided DataFrames.
+    For numerical data the average is calculated; for categorical the mode is calculated.
 
     Args:
         dataset_paths (list): Arbitrary number of paths to datasets to collude.
@@ -71,18 +74,38 @@ def collude_datasetes_by_avg(dataset_paths):
     if not all(df.shape == ref_shape and df.columns.equals(ref_columns) for df in dataframes):
         raise ValueError("All DataFrames must have the same shape and columns.")
 
+    # Identify numerical and categorical columns
+    numerical_columns = dataframes[0].select_dtypes(include=['number']).columns
+    categorical_columns = dataframes[0].select_dtypes(include=['object', 'category']).columns
+
     # Stack all DataFrames along a new axis to allow comparison across all values
     stacked = np.stack([df.values for df in dataframes])
 
-    # Calculate where disagreements occur by checking if all values along the new axis are the same
-    disagreements = np.any(stacked != stacked[0, :, :], axis=0)
-
-    # Calculate the mean along the new axis for all positions
-    mean_values = np.mean(stacked, axis=0)
-
-    # Create the merged DataFrame
+    # Initiate the colluded dataset
     merged_df = pd.DataFrame(stacked[0], columns=ref_columns).copy()
-    merged_df.values[disagreements] = mean_values[disagreements]
+
+    # Handle numerical attributes
+    for col in numerical_columns:
+        col_idx = ref_columns.get_loc(col)
+        # Extract the column values across datasets
+        column_values = stacked[:, :, col_idx]
+        # Find disagreements
+        disagreements = np.any(column_values != column_values[0], axis=0)
+        # Calculate the mean along the new axis for numerical values
+        mean_values = np.mean(column_values, axis=0)
+        # Replace disagreements with the mean
+        merged_df[col].iloc[disagreements] = mean_values[disagreements]  # todo: change to: merged_df.iloc[disagreements, col] = mean_values[disagreements]
+
+    # Handle categorical attributes
+    for col in categorical_columns:
+        col_idx = ref_columns.get_loc(col)
+        # Extract the column values across datasets
+        column_values = stacked[:, :, col_idx]
+        # For each row, determine the most frequent value
+        for row_idx in range(column_values.shape[1]):
+            value_counts = Counter(column_values[:, row_idx])
+            most_common_value, _ = value_counts.most_common(1)[0]
+            merged_df[col].iloc[row_idx] = most_common_value  # todo: change to merged_df.iloc[row_idx, col] = most_common_value
 
     return merged_df
 

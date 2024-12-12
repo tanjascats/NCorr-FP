@@ -2,7 +2,7 @@ import sys
 sys.path.insert(0, '../dissertation')  # make the script standalone for running on server
 
 import datasets
-from datasets import CovertypeSample
+from datasets import CovertypeSample, Adult
 
 import pandas as pd
 import argparse
@@ -11,7 +11,9 @@ from itertools import product
 from datetime import datetime
 import numpy as np
 from scipy.stats import entropy, gaussian_kde, wasserstein_distance, ks_2samp
+from scipy.spatial.distance import cdist
 from math import sqrt
+import utils
 
 
 def get_delta_mean_std(df1, df2):
@@ -95,7 +97,10 @@ def kl_divergence_kde(df1, df2, num_points=100):
     """
     kl_divergences = {}
 
-    for column in df1.columns:
+    numerical_columns = df1.drop(['Id'], axis=1).select_dtypes(include=['number'])
+    categorical_columns = df1.drop(['Id'], axis=1).select_dtypes(include=['object', 'category'])
+
+    for column in numerical_columns:
         # Compute KDE for each DataFrame's feature column
         kde1 = gaussian_kde(df1[column], bw_method='scott')
         kde2 = gaussian_kde(df2[column], bw_method='scott')
@@ -119,6 +124,27 @@ def kl_divergence_kde(df1, df2, num_points=100):
 
         # Calculate KL divergence for this feature
         kl_divergences[column] = entropy(p, q)
+
+    # Categorical attributes
+    for col in categorical_columns:
+        freq1 = df1[col].value_counts(normalize=True)
+        freq2 = df2[col].value_counts(normalize=True)
+
+        # Align categories (fill missing categories with 0)
+        all_categories = set(freq1.index).union(set(freq2.index))
+        freq1 = freq1.reindex(all_categories, fill_value=0)
+        freq2 = freq2.reindex(all_categories, fill_value=0)
+
+        # Compute KL divergence
+        freq1 = np.array(freq1)
+        freq2 = np.array(freq2)
+
+        # Avoid division by zero or log of zero by adding a small epsilon
+        epsilon = 1e-10
+        freq1 = np.clip(freq1, epsilon, 1)
+        freq2 = np.clip(freq2, epsilon, 1)
+
+        kl_divergences[col] = np.sum(freq1 * np.log(freq1 / freq2))
 
     return kl_divergences
 
@@ -173,9 +199,30 @@ def emd(df1, df2):
 
     emd_distances = {}
 
-    for column in df1.columns:
+    numerical_columns = df1.drop(['Id'], axis=1).select_dtypes(include=['number'])
+    categorical_columns = df1.drop(['Id'], axis=1).select_dtypes(include=['object', 'category'])
+
+    for column in numerical_columns:
         # Calculate EMD (Wasserstein distance) for each column
         emd_distances[column] = wasserstein_distance(df1[column], df2[column])
+
+        # Calculate EMD for categorical attributes
+    for column in categorical_columns:
+        # Get unique values and their frequencies for each dataset
+        freq1 = df1[column].value_counts(normalize=True).sort_index()
+        freq2 = df2[column].value_counts(normalize=True).sort_index()
+
+        # Align the distributions to include all unique values
+        all_categories = set(freq1.index).union(set(freq2.index))
+        freq1 = freq1.reindex(all_categories, fill_value=0)
+        freq2 = freq2.reindex(all_categories, fill_value=0)
+
+        # Use a simple distance matrix for categories (e.g., 0 if same, 1 if different)
+        distance_matrix = np.ones((len(all_categories), len(all_categories))) - np.eye(len(all_categories))
+
+        # Calculate the Earth Mover's Distance using frequency distributions
+        emd_distances[column] = np.sum(
+            cdist(freq1.values.reshape(-1, 1), freq2.values.reshape(-1, 1), metric='euclidean'))
 
     return emd_distances
 
@@ -225,7 +272,11 @@ def hellinger_distance(df1, df2, num_points=100):
 
     hellinger_distances = {}
 
-    for column in df1.columns:
+    numerical_columns = df1.drop(['Id'], axis=1).select_dtypes(include=['number'])
+    categorical_columns = df1.drop(['Id'], axis=1).select_dtypes(include=['object', 'category'])
+
+    # Numerical
+    for column in numerical_columns:
         # Compute KDE for each column in both DataFrames
         kde1 = gaussian_kde(df1[column], bw_method='scott')
         kde2 = gaussian_kde(df2[column], bw_method='scott')
@@ -246,6 +297,20 @@ def hellinger_distance(df1, df2, num_points=100):
         # Calculate Hellinger Distance
         hellinger_dist = sqrt(0.5 * np.sum((np.sqrt(p) - np.sqrt(q)) ** 2))
         hellinger_distances[column] = hellinger_dist
+
+    # Categorical attributes
+    for col in categorical_columns:
+        freq1 = df1[col].value_counts(normalize=True)
+        freq2 = df2[col].value_counts(normalize=True)
+
+        # Align categories (fill missing categories with 0)
+        all_categories = set(freq1.index).union(set(freq2.index))
+        freq1 = freq1.reindex(all_categories, fill_value=0)
+        freq2 = freq2.reindex(all_categories, fill_value=0)
+
+        # Compute Hellinger distance
+        distance = (1 / np.sqrt(2)) * np.sqrt(np.sum((np.sqrt(freq1) - np.sqrt(freq2)) ** 2))
+        hellinger_distances[col] = distance
 
     return hellinger_distances
 
@@ -272,9 +337,13 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
     data = None
     if dataset == 'covertype-sample':
         data = CovertypeSample()
+    elif dataset == 'adult':
+        data = Adult()
     if data is None:
         exit('Please provide a valid dataset name ({})'.format(datasets.__all__))
     print(data.dataframe.head(3))
+    numerical_columns = data.dataframe.drop(['Id'], axis=1).select_dtypes(include=['number'])
+    categorical_columns = data.dataframe.drop(['Id'], axis=1).select_dtypes(include=['object', 'category'])
 
     # --- Measure the statistics of the original dataset --- #
     # todo: the general problem with these is that I usually need a numeric value to describe and compare
@@ -288,19 +357,21 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
     # todo: Frequency and disributions
     # 1. Unique values per column
     # 2. Frequency counts (density function/ binned frequencies)
-    # todo: correlation analysis
+    # todo: correlation analysis (pearson, cramer's V, ets squared)
     # 1. Pearson correlation matrix for numerical cols
-    correlation_matrix_original = data.dataframe.corr()
-    correlated_pairs = extract_high_correlations(correlation_matrix_original, threshold=0.55)
-    correlated_pairs_string = ["-".join(list(a)) for a in list(correlated_pairs.keys())]
+#    correlation_matrix_original = data.dataframe.corr()
+#    correlated_pairs = extract_high_correlations(correlation_matrix_original, threshold=0.55)
+    correlated_pairs_dict = utils.extract_mutually_correlated_pairs(data.dataframe, threshold_num=0.70, threshold_cat=0.45)
+    correlated_pairs_string = ["-".join(list(a)) for a in list(correlated_pairs_dict.keys())]
 
     # --- Define parameters --- #
     params = {'gamma': [2, 4, 8, 16, 32], #, 4, 8, 16, 32],
-              'k': [300],#, 500],
-              'fingerprint_length': [64], #, 128, 256, 512], #, 64 128, 256],
+              'k': [300, 450],#, 450],
+              'fingerprint_length': [128, 256, 512], #, 128, 256, 512], #, 64 128, 256],
               'n_recipients': [20],
               'sk': [100 + i for i in range(10)], #10)]}  # #sk-s = #experiments
-              'id': [i for i in range(20)]} #,i for i in range(20)]}
+              'id': [i for i in range(20)],
+              'code': ['tardos']} #,i for i in range(20)]}
 
     # --- Initialise the results --- #
     # todo: add all metrics
@@ -349,6 +420,8 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
             emd_score = emd(data.dataframe, fingerprinted_data)
             ks = ks_statistic(data.dataframe, fingerprinted_data)  # returns ks and p-value
             for attribute in delta_mean_std.index:
+                if attribute == 'Id':
+                    continue
                 # record the parameters for the results
                 for key, values in param.items():
                     results_univar[key].append(values)
@@ -379,10 +452,29 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
                        np.prod(data.dataframe.drop(['Id'], axis=1).shape)
             results_bivar['accuracy'].append(accuracy)
             # correlations
-            for i, pair in enumerate(correlated_pairs):
-                fp_corr = fingerprinted_data[pair[0]].corr(fingerprinted_data[pair[1]])
-                delta_corr = abs((correlated_pairs[pair] - fp_corr)/correlated_pairs[pair])
-                results_bivar[correlated_pairs_string[i]].append(delta_corr)
+            for i, pair in enumerate(correlated_pairs_dict.keys()):
+                # todo: calculate the fitting correlations
+                if pair[0] in numerical_columns and pair[1] in numerical_columns:
+                    # for two numerical calculate pearson's
+                    fp_corr = fingerprinted_data[pair[0]].corr(fingerprinted_data[pair[1]])
+                    delta_corr = abs((correlated_pairs_dict[pair] - fp_corr)/correlated_pairs_dict[pair])
+                    results_bivar[correlated_pairs_string[i]].append(delta_corr)
+                elif pair[0] in categorical_columns and pair[1] in categorical_columns:
+                    # for categorical calculate Cramer's V
+                    fp_v = utils.cramers_v(fingerprinted_data[pair[0]], fingerprinted_data[pair[1]])
+                    delta_v = abs((correlated_pairs_dict[pair] - fp_v)/correlated_pairs_dict[pair])
+                    results_bivar[correlated_pairs_string[i]].append(delta_v)
+                else:
+                    # for categorical x numerical calculate eta squared
+                    if pair[0] in categorical_columns:
+                        cat_col = pair[0]
+                        num_col = pair[1]
+                    else:
+                        cat_col = pair[1]
+                        num_col = pair[0]
+                    fp_eta = utils.eta_squared(fingerprinted_data, cat_col, num_col)
+                    delta_eta = abs((correlated_pairs_dict[pair] - fp_eta)/correlated_pairs_dict[pair])
+                    results_bivar[correlated_pairs_string[i]].append(delta_eta)
 
     print(results_bivar)
     results_univar_frame = pd.DataFrame(results_univar)

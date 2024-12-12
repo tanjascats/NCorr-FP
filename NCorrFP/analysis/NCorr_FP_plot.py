@@ -115,6 +115,66 @@ def plot_tn_confidence(results):
     plt.show()
 
 
+def plot_tp_tn_confidence(results):
+    """
+        Plots the confidence rate for matching the wrong recipient and true recipient with standard deviation shading
+        for different FP lengths.
+
+        Args:
+        - results (pd.DataFrame): DataFrame containing 'embedding_ratio', 'tn', 'tp', 'code' and 'fingerprint_length' columns.
+        """
+    # Group by 'embedding_ratio' and 'fingerprint_length' to calculate mean and standard deviation
+    grouped_data_tn = results.groupby(['embedding_ratio', 'fingerprint_length', 'code'])['tn'].agg(['mean', 'std']).reset_index()
+    grouped_data_tp = results.groupby(['embedding_ratio', 'fingerprint_length'])['tp'].agg(['mean', 'std']).reset_index()
+
+    # Plotting
+    plt.figure(figsize=(10, 6))
+    markers = ['o', 'v', 'x', 's']
+
+    # Iterate through each neighborhood size for separate lines and shaded areas
+    for i, fingerprint_length in enumerate(grouped_data_tn['fingerprint_length'].unique()):
+        # Filter data for the current neighborhood size
+        data_tn_hash = grouped_data_tn[(grouped_data_tn['fingerprint_length'] == fingerprint_length) & (grouped_data_tn['code'] == 'hash')]
+        data_tn_tardos = grouped_data_tn[(grouped_data_tn['fingerprint_length'] == fingerprint_length) & (grouped_data_tn['code'] == 'tardos')]
+        data_tp = grouped_data_tp[grouped_data_tp['fingerprint_length'] == fingerprint_length]
+
+        colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+        line_styles = [':', '--', '-']  # dotted, dashed, solid
+        markers = ['o', 'v', 'x', 's']
+
+        # Assign the color for this fingerprint length
+        color = colors[i]
+
+        # Plot for tn_hash
+        plt.plot(data_tn_hash['embedding_ratio'], data_tn_hash['mean'], label=f'{fingerprint_length}-bit (hash, tn)', color=color, linestyle=line_styles[0], marker=markers[i])
+        plt.fill_between(data_tn_hash['embedding_ratio'],
+                         data_tn_hash['mean'] - data_tn_hash['std'],
+                         data_tn_hash['mean'] + data_tn_hash['std'],
+                         color=color, alpha=0.2)
+
+        # Plot for tn_tardos
+        plt.plot(data_tn_tardos['embedding_ratio'], data_tn_tardos['mean'], label=f'{fingerprint_length}-bit (tardos, tn)', color=color, linestyle=line_styles[1], marker=markers[i])
+        plt.fill_between(data_tn_tardos['embedding_ratio'],
+                         data_tn_tardos['mean'] - data_tn_tardos['std'],
+                         data_tn_tardos['mean'] + data_tn_tardos['std'],
+                         color=color, alpha=0.2)
+
+        # Plot for tp
+        plt.plot(data_tp['embedding_ratio'], data_tp['mean'], label=f'{fingerprint_length}-bit (tp)', color=color, linestyle=line_styles[2], marker=markers[i]) # linewidth=2
+        plt.fill_between(data_tp['embedding_ratio'],
+                         data_tp['mean'] - data_tp['std'],
+                         data_tp['mean'] + data_tp['std'],
+                         color=color, alpha=0.2)
+
+    # Labels and legend
+    plt.xlabel('Fingerprint embedding ratio (1/gamma) [0, 1]')
+    plt.ylabel('Extraction confidence [0, 1]')
+    plt.title('Extraction confidence')
+    plt.legend()#title='Fingerprint Length (in bits)')
+    plt.grid(True)
+    plt.show()
+
+
 def plot_data_accuracy(results):
     """
     Plots the data accuracy, i.e. how many values change in the fingerprinted dataset.

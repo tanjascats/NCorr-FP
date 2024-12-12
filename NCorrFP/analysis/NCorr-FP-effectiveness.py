@@ -6,7 +6,7 @@ import sys
 sys.path.insert(0, '../dissertation')  # make the script standalone for running on server
 
 import datasets
-from datasets import CovertypeSample
+from datasets import CovertypeSample, Adult
 from NCorrFP.NCorrFP import NCorrFP
 
 import pandas as pd
@@ -64,17 +64,20 @@ def effectiveness(dataset='covertype-sample', save_results='effectiveness'):
     data = None
     if dataset == 'covertype-sample':
         data = CovertypeSample()
+    elif dataset == 'adult':
+        data = Adult()
     if data is None:
         exit('Please provide a valid dataset name ({})'.format(datasets.__all__))
     print(data.dataframe.head(3))
 
     # --- Define parameters --- #
-    params = {'gamma': [2],# 4, 8, 16, 32],
-              'k': [301],# 500],
-              'fingerprint_length': [128],# 128, 256, 512], #, 128, 256],
+    params = {'gamma': [32],#, 4, 8, 16, 32],
+              'k': [300, 450],
+              'fingerprint_length': [128, 256, 512], #, 128, 256],
               'n_recipients': [20],
               'sk': [100 + i for i in range(10)], #10)]}  # #sk-s = #experiments
-              'id': [0]#i for i in range(20)]
+              'id': [0],#i for i in range(20)],
+              'code': ['tardos', 'hash']
               }
 
     # --- Initialise the results --- #
@@ -109,7 +112,7 @@ def effectiveness(dataset='covertype-sample', save_results='effectiveness'):
                 print(f"Empty file: {file_name}")
                 continue
             scheme = NCorrFP(gamma=param['gamma'], fingerprint_bit_length=param['fingerprint_length'], k=param['k'],
-                             number_of_recipients=param['n_recipients'], fingerprint_code_type='hash')
+                             number_of_recipients=param['n_recipients'], fingerprint_code_type=param['code'])
             detected_fp, votes, suspect_probvec = scheme.detection(fingerprinted_data, secret_key=param['sk'],
                                                                    primary_key='Id',
                                                                    correlated_attributes=data.correlated_attributes,

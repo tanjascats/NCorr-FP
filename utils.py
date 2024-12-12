@@ -444,6 +444,62 @@ def eta_squared(dataframe, categorical_col, numerical_col):
     return eta_squared_value
 
 
+def extract_mutually_correlated_pairs(dataframe, threshold_num=0.80, threshold_cat=0.55, threshold_numcat=0.14):
+    """
+    Extract pairs of mutually correlated attributes based on a correlation threshold.
+
+    Args:
+    - dataframe (pd.DataFrame): Dataset
+    - threshold_num (float): Minimum correlation threshold to consider numerical attributes as mutually correlated (Pearson's correlation)
+    - threshold_cat (float): Minimum correlation threshold to consider categorical attributes as mutually correlated (Cramer's V)
+    - threshold_numcat (float): Minimum correlation threshold to consider a high mutual correlation between a numerical and categorical attribute (eta squared)
+
+    Returns:
+    - dict: Dictionary where keys are pairs of attributes and values are their mutual correlation.
+    """
+    correlation_dict = {}
+
+    # Identify numerical and categorical columns
+    numerical_columns = dataframe.drop(['Id'], axis=1).select_dtypes(include=['number'])
+    categorical_columns = dataframe.drop(['Id'], axis=1).select_dtypes(include=['object', 'category'])
+
+    # Numerical correlations (Pearson's)
+    corr_matrix = numerical_columns.corr()
+
+    # Mask diagonal and lower triangle to avoid redundant pairs
+    mask = np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
+
+    # Get pairs with absolute correlation above the threshold
+    for i, j in zip(*np.where((np.abs(corr_matrix) > threshold_num) & mask)):
+        attr1, attr2 = corr_matrix.index[i], corr_matrix.columns[j]
+        correlation_dict[(attr1, attr2)] = corr_matrix.iloc[i, j]
+
+    # Categorical correlations (Cramér's V)
+    for i, col1 in enumerate(categorical_columns.columns):
+        for col2 in categorical_columns.columns[i + 1:]:  # Avoid redundant pairs
+            v = cramers_v(dataframe[col1], dataframe[col2])
+            if v > threshold_cat:
+                correlation_dict[(col1, col2)] = v
+
+    # Numerical x Categorical correlations (Eta squared)
+    for cat_col in categorical_columns.columns:
+        for num_col in numerical_columns.columns:
+            try:
+                eta_sq_value = eta_squared(dataframe, cat_col, num_col)
+                if eta_sq_value > threshold_numcat:
+                    correlation_dict[(cat_col, num_col)] = eta_sq_value
+            except Exception:
+                # Skip problematic pairs (e.g., NaN or single-value columns)
+                continue
+
+    # Deduplicate pairs by sorting attributes within each pair
+    deduplicated_dict = {
+        tuple(sorted(pair)): value for pair, value in correlation_dict.items()
+    }
+
+    return deduplicated_dict
+
+
 def extract_mutually_correlated_groups(dataframe, threshold_num=0.80, threshold_cat=0.55, threshold_numcat=0.14):
     """
     Extract lists of mutually correlated attributes based on a correlation threshold.
@@ -457,39 +513,7 @@ def extract_mutually_correlated_groups(dataframe, threshold_num=0.80, threshold_
     Returns:
     - list of lists: Each inner list contains mutually correlated attributes.
     """
-    numerical_columns = dataframe.drop(['Id'], axis=1).select_dtypes(include=['number'])
-    categorical_columns = dataframe.drop(['Id'], axis=1).select_dtypes(include=['object', 'category'])
-    # numerical correlations (Pearson's)
-    corr_matrix = numerical_columns.corr() \
-        if 'Id' in dataframe.columns else numerical_columns.corr()
-
-    # Mask diagonal and lower triangle to avoid redundant pairs
-    mask = np.triu(np.ones(corr_matrix.shape), k=1).astype(bool)
-
-    # Get pairs with absolute correlation above the threshold
-    # Numerical
-    correlated_pairs = [(corr_matrix.index[i], corr_matrix.columns[j])
-                        for i, j in zip(*np.where((np.abs(corr_matrix) > threshold_num) & mask))]
-
-    # Categorical
-    # Compute Cramér's V for all pairs of categorical attributes
-    for i, col1 in enumerate(categorical_columns.columns):
-        for col2 in categorical_columns.columns[i + 1:]:  # Avoid redundant pairs
-            v = cramers_v(dataframe[col1], dataframe[col2])
-            if v > threshold_cat:
-                correlated_pairs.append((col1, col2))
-
-    # Numerical x Categorical
-    # Eta squared - the proportion of variance in the continuous variable explained by the categorical variable [0,1]
-    for cat_col in categorical_columns.columns:
-        for num_col in numerical_columns.columns:
-            try:
-                eta_sq_value = eta_squared(dataframe, cat_col, num_col)
-                if eta_sq_value > threshold_numcat:
-                    correlated_pairs.append((cat_col, num_col))
-            except Exception as e:
-                # Skip problematic pairs (e.g., NaN or single-value columns)
-                continue
+    correlated_pairs = extract_mutually_correlated_pairs(dataframe, threshold_num, threshold_cat, threshold_numcat)
 
     # Convert pairs to clusters using hierarchical clustering
     if not correlated_pairs:
