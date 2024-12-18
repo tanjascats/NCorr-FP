@@ -315,7 +315,7 @@ def hellinger_distance(df1, df2, num_points=100):
     return hellinger_distances
 
 
-def fidelity(dataset='covertype-sample', save_results='fidelity'):
+def fidelity(dataset='covertype-sample', save_results='fidelity-baseline'):
     """
     Perform fidelity analysis of NCorr-FP
         1. dataset value accuracy (data similarity)
@@ -328,7 +328,7 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
     Returns: pd.DataFrame of the fidelity results
 
     """
-    print('NCorr-FP: Fidelity.\nData: {}'.format(dataset))
+    print('Random FP: Fidelity.\nData: {}'.format(dataset))
     timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     save_bivar = save_results + f"_bivariate_{dataset}_{timestamp}.csv"
     save_results += f"_univariate_{dataset}_{timestamp}.csv"  # out file
@@ -339,6 +339,7 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
         data = CovertypeSample()
     elif dataset == 'adult':
         data = Adult()
+        # in the baseline fingerpritned data, the missing data is represented as ""
     if data is None:
         exit('Please provide a valid dataset name ({})'.format(datasets.__all__))
     print(data.dataframe.head(3))
@@ -361,27 +362,24 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
     # 1. Pearson correlation matrix for numerical cols
 #    correlation_matrix_original = data.dataframe.corr()
 #    correlated_pairs = extract_high_correlations(correlation_matrix_original, threshold=0.55)
-    correlated_pairs_dict = utils.extract_mutually_correlated_pairs(data.dataframe,
-                                                                    threshold_num=0.70, threshold_cat=0.45, threshold_numcat=0.14)
+    correlated_pairs_dict = utils.extract_mutually_correlated_pairs(data.dataframe, threshold_num=0.70, threshold_cat=0.45, threshold_numcat=0)
     correlated_pairs_string = ["-".join(list(a)) for a in list(correlated_pairs_dict.keys())]
 
     # --- Define parameters --- #
-    params = {'gamma': [2, 4, 8, 16, 32], #, 4, 8, 16, 32],
-              'k': [300, 450],#, 450],
-              'fingerprint_length': [128, 256, 512], #, 128, 256, 512], #, 64 128, 256],
-              'n_recipients': [20],
-              'sk': [100 + i for i in range(10)], #10)]}  # #sk-s = #experiments
-              'id': [i for i in range(20)],
-              'code': ['tardos']} #,i for i in range(20)]}
+    params = {'l': [128],#, 256, 512], #, 128, 256, 512], #, 64 128, 256],' \
+               'g': [2, 4, 8, 16, 32], #, 4, 8, 16, 32],
+              'x': [2],#, 450],
+              'sk': [4370315727 + i for i in range(10)]} #,i for i in range(20)]}
 
     # --- Initialise the results --- #
+    # todo: add all metrics
     # Univariate
     results_univar = {key: [] for key in list(params.keys()) +
-                      ['embedding_ratio', 'recipient_id', 'attribute', 'rel_delta_mean', 'rel_delta_std',
+                      ['embedding_ratio', 'attribute', 'rel_delta_mean', 'rel_delta_std',
                        'hellinger_distance', 'kl_divergence', 'emd', 'ks', 'p_value']}
     # Bivariate
     results_bivar = {key: [] for key in list(params.keys()) +
-               ['embedding_ratio', 'recipient_id', 'accuracy'] + correlated_pairs_string}
+               ['embedding_ratio', 'accuracy'] + correlated_pairs_string}
 
     # --- Run the detection and count: --- #
     #   1. wrong votes
@@ -389,19 +387,21 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
     #   3. detection confidence for the wrong recipients
     combinations = list(product(*params.values()))
     # check if all the files are there
-    folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fp_datasets', 'NCorrFP', dataset + '-fp')
+    folder_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fp_datasets', 'random', dataset + '-fp')
+    print(folder_path)
     file_count = len([file for file in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, file))])
     if file_count < len(combinations):
-        print("WARNING: It seems that some fingerprinted datasets are missing. Total file count: ", file_count)
+        print("WARNING: It seems that some fingerprinted datasets are missing.")
     # Iterate through parameter combinations (datasets)
     for combination in combinations:
         param = dict(zip(params.keys(), combination))
 
-        param_string = '_'.join(f"{key}{value}" for key, value in param.items())
+        param_string = '_'.join(f"{key}{value}" for key, value in param.items() if key in ['l', 'g', 'x']) + '_' + str(param['sk']) + '_4'
         file_name = data.name + "_" + param_string + '.csv'
-        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fp_datasets', 'NCorrFP', data.name + "-fp", file_name)
+        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fp_datasets', 'random', data.name + "-fp", file_name)
 
         # Check if it's a file (skip folders)
+#        print(f"Looking for the file: {file_path}")
         if os.path.isfile(file_path):
             print(f"Reading file: {file_name}")
 
@@ -411,58 +411,65 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
             except pd.errors.EmptyDataError:
                 print(f"Empty file: {file_name}")
                 continue
+            if 'Id' not in fingerprinted_data.columns:
+                cols = fingerprinted_data.columns
+                fingerprinted_data['Id'] = fingerprinted_data.index
+                cols = ['Id'] + list(cols)
+                fingerprinted_data = fingerprinted_data[cols]
 
+            if False: # todo REMOVE
+                # -- Calculate delta mean and std for each attribute --- #
+                delta_mean_std = get_delta_mean_std(fingerprinted_data, data.dataframe)
+                # -- Calculate: (i) hellinger dist, (ii) kl divergence, (iii) emd, (iv) ks
+                hellinger_dist = hellinger_distance(data.dataframe, fingerprinted_data)
+                kl_div = kl_divergence_kde(data.dataframe, fingerprinted_data)
+                emd_score = emd(data.dataframe, fingerprinted_data)
+                ks = ks_statistic(data.dataframe, fingerprinted_data)  # returns ks and p-value
+                for attribute in data.dataframe.columns: #delta_mean_std.index:
+                    if attribute == 'Id':
+                        continue
+                    # record the parameters for the results
+                    for key, values in param.items():
+                        results_univar[key].append(values)
+                    results_univar['embedding_ratio'].append(1.0 / param['g'])
+    #                results_univar['recipient_id'].append(param['id'])
 
-            # -- Calculate delta mean and std for each (numerical) attribute --- #
-            delta_mean_std = get_delta_mean_std(fingerprinted_data, data.dataframe)
-#            print(delta_mean_std.index)
-#            print(data.dataframe.columns); exit()
-            # -- Calculate: (i) hellinger dist, (ii) kl divergence, (iii) emd, (iv) ks (numerical)
-            hellinger_dist = hellinger_distance(data.dataframe, fingerprinted_data)
-            kl_div = kl_divergence_kde(data.dataframe, fingerprinted_data)
-            emd_score = emd(data.dataframe, fingerprinted_data)
-            ks = ks_statistic(data.dataframe, fingerprinted_data)  # returns ks and p-value
-            for attribute in data.dataframe.columns:
-                if attribute == 'Id':
-                    continue
-                # record the parameters for the results
-                for key, values in param.items():
-                    results_univar[key].append(values)
-                results_univar['embedding_ratio'].append(1.0 / param['gamma'])
-                results_univar['recipient_id'].append(param['id'])
+                    # add the stat results
+                    results_univar['attribute'].append(attribute)
+                    if attribute in delta_mean_std.index:
+                        results_univar['rel_delta_mean'].append(delta_mean_std['rel_delta_mean'][attribute])
+                        results_univar['rel_delta_std'].append(delta_mean_std['rel_delta_std'][attribute])
+                        results_univar['ks'].append(ks[attribute]['ks_statistic'])
+                        results_univar['p_value'].append(ks[attribute]['p_value'])
+                    else:  # categorical attributes
+                        results_univar['rel_delta_mean'].append(None)
+                        results_univar['rel_delta_std'].append(None)
+                        results_univar['ks'].append(None)
+                        results_univar['p_value'].append(None)
 
-                # add the stat results
-                results_univar['attribute'].append(attribute)
-                if attribute in delta_mean_std.index:
-                    results_univar['rel_delta_mean'].append(delta_mean_std['rel_delta_mean'][attribute])
-                    results_univar['rel_delta_std'].append(delta_mean_std['rel_delta_std'][attribute])
-                    results_univar['ks'].append(ks[attribute]['ks_statistic'])
-                    results_univar['p_value'].append(ks[attribute]['p_value'])
-                else:  # categorical attributes
-                    results_univar['rel_delta_mean'].append(None)
-                    results_univar['rel_delta_std'].append(None)
-                    results_univar['ks'].append(None)
-                    results_univar['p_value'].append(None)
-
-                results_univar['hellinger_distance'].append(hellinger_dist[attribute])
-                results_univar['kl_divergence'].append(kl_div[attribute])
-                results_univar['emd'].append(emd_score[attribute])
+                    results_univar['hellinger_distance'].append(hellinger_dist[attribute])
+                    results_univar['kl_divergence'].append(kl_div[attribute])
+                    results_univar['emd'].append(emd_score[attribute])
 
 
             # -- Calculated delta corr for highly correlated pairs -- #
             # record the parameters for the results
             for key, values in param.items():
                 results_bivar[key].append(values)
-            results_bivar['embedding_ratio'].append(1.0 / param['gamma'])
-            results_bivar['recipient_id'].append(param['id'])
+            results_bivar['embedding_ratio'].append(1.0 / param['g'])
+#            results_bivar['recipient_id'].append(param['id'])
 
             # add the stat results
             # data accuracy (% changed values)
-            accuracy = (fingerprinted_data != data.dataframe).sum().sum() / \
+            # missing valules are represented differently but they stay in the fingerprinted data so we deduct them
+            accuracy = ((fingerprinted_data != data.dataframe).sum().sum() - (data.dataframe == '?').sum().sum()) / \
                        np.prod(data.dataframe.drop(['Id'], axis=1).shape)
             results_bivar['accuracy'].append(accuracy)
             # correlations
             for i, pair in enumerate(correlated_pairs_dict.keys()):
+                # todo: calculate the fitting correlations
+                if not (pair[0] == 'age' and pair[1] == 'sex'): # todo REMOVE
+                    continue
                 if pair[0] in numerical_columns and pair[1] in numerical_columns:
                     # for two numerical calculate pearson's
                     fp_corr = fingerprinted_data[pair[0]].corr(fingerprinted_data[pair[1]])
@@ -484,6 +491,8 @@ def fidelity(dataset='covertype-sample', save_results='fidelity'):
                     fp_eta = utils.eta_squared(fingerprinted_data, cat_col, num_col)
                     delta_eta = abs((correlated_pairs_dict[pair] - fp_eta)/correlated_pairs_dict[pair])
                     results_bivar[correlated_pairs_string[i]].append(delta_eta)
+        else:
+            print('File not found.')
     print(results_bivar)
     results_univar_frame = pd.DataFrame(results_univar)
     results_bivar_frame = pd.DataFrame(results_bivar)

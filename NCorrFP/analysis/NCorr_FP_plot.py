@@ -312,18 +312,18 @@ def plot_histogram_grid(datasets, baseline_dataset, columns=5, bins=10, gamma=No
 
     # Set up the figure size based on rows and columns
     fig, axes = plt.subplots(rows, columns, figsize=(columns * 4, rows * 3))
-    fig.suptitle("Histograms of Dataset Attributes with Baseline Comparison", y=1.02, fontsize=16)
+#   fig.suptitle("Histograms of Dataset Attributes with Baseline Comparison", y=1.02, fontsize=16)
 
     # Loop through each attribute and dataset to create histograms
     for i, attribute in enumerate(attributes):
         # Loop through each dataset
         for j, dataset in enumerate(datasets):
             ax = axes[i, j]
-            ax.hist(dataset[attribute], bins=bins, alpha=0.7, color='blue', edgecolor='black')
+            ax.hist(dataset[attribute], bins=bins, alpha=0.7, color='blue', edgecolor='black', label='original')
 
             # Overlay the baseline dataset's histogram as an outline
             ax.hist(baseline_dataset[attribute], bins=bins, histtype='step', linewidth=1.5, color='red',
-                    edgecolor='red')
+                    edgecolor='red', label='fingerprinted')
 
             # Set labels only for the first column and bottom row
             if i == 0:
@@ -340,6 +340,7 @@ def plot_histogram_grid(datasets, baseline_dataset, columns=5, bins=10, gamma=No
     # Adjust spacing and show plot
     plt.tight_layout()
     plt.subplots_adjust(top=0.95)
+    plt.legend()
     plt.show()
 
 
