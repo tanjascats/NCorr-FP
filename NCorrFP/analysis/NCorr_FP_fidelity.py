@@ -272,8 +272,12 @@ def hellinger_distance(df1, df2, num_points=100):
 
     hellinger_distances = {}
 
-    numerical_columns = df1.drop(['Id'], axis=1).select_dtypes(include=['number'])
-    categorical_columns = df1.drop(['Id'], axis=1).select_dtypes(include=['object', 'category'])
+    if 'Id' in df1:
+        numerical_columns = df1.drop(['Id'], axis=1).select_dtypes(include=['number'])
+        categorical_columns = df1.drop(['Id'], axis=1).select_dtypes(include=['object', 'category'])
+    else:
+        numerical_columns = df1.select_dtypes(include=['number'])
+        categorical_columns = df1.select_dtypes(include=['object', 'category'])
 
     # Numerical
     for column in numerical_columns:

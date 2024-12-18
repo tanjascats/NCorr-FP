@@ -65,7 +65,7 @@ class FlippingAttack(Attack):
        fraction [0,1]
        """
 
-    def run(self, dataset, fraction):
+    def run(self, dataset, fraction, random_state=0):
         start = time.time()
         # Create a copy to avoid modifying the original DataFrame
         modified_df = dataset.copy()
@@ -77,6 +77,7 @@ class FlippingAttack(Attack):
             raise ValueError("Number of flips exceeds the total number of elements in the DataFrame.")
 
         # Randomly choose n indices from the DataFrame
+        np.random.seed(random_state)
         random_indices = np.random.choice(total_elements, n, replace=False)
         rows, cols = np.unravel_index(random_indices, modified_df.shape)
 

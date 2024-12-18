@@ -7,6 +7,7 @@ import numbers
 import warnings
 from traceback import format_exc
 from joblib import Parallel
+from copy import deepcopy
 
 from sklearn.utils.metaestimators import _safe_split
 from sklearn.utils import indexable
@@ -142,10 +143,10 @@ def read_data(dataset, primary_key_attribute=None, target_attribute=None):
         relation = datasets.Dataset(path=dataset, target_attribute=target_attribute,
                            primary_key_attribute=primary_key_attribute)
     elif isinstance(dataset, pd.DataFrame):  # assumed the pd.DataFrame is given
-        relation = datasets.Dataset(dataframe=dataset, target_attribute=target_attribute,
+        relation = datasets.Dataset(dataframe=dataset.copy(deep=True), target_attribute=target_attribute,
                            primary_key_attribute=primary_key_attribute)
     elif isinstance(dataset, datasets.Dataset):
-        relation = dataset
+        relation = deepcopy(dataset)
     else:
         print('Error [utils._read_data]: Wrong type of input data: ' + str(type(dataset)))
         exit()
