@@ -29,7 +29,7 @@ def embed_fingerprints(data, params):
 
         param_string = '_'.join(f"{key}{value}" for key, value in param.items())
         file_name = data.name + "_" + param_string + '.csv'
-        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), data.name + "-fp", file_name)
+        file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fp_datasets', 'NCorrFP', data.name + "-fp", file_name)
 
         # skip the file if it already exists
         if not os.path.exists(file_path):
@@ -64,11 +64,11 @@ if __name__ == '__main__':
     print(data.dataframe.head(3))
 
     # --- Define parameters --- #
-    params = {'gamma': [5],#2, 4, 8, 16, 32],
+    params = {'gamma': [16],
               'k': [450],#, 450], #, 1000], # 1% and 1,5%
               'fingerprint_length': [128],#, 256, 512],#, 128, 256],  # , 128, 256],
               'n_recipients': [20],
-              'sk': [100],# + i for i in range(10)],  # #sk-s = #experiments
+              'sk': [100 + i for i in range(10)],  # #sk-s = #experiments # todo: revert to range(10)
               'id': [0],# for i in range(20)],
               'code': ['tardos']#i for i in range(20)]  # + i for i in range(10)]}  # 10)]}  # #sk-s = #experiments
               }

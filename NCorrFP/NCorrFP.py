@@ -650,7 +650,9 @@ class NCorrFP():
         number_of_cat_attributes = len(relation.select_dtypes(include='object').columns)
         # total number of attributes
         tot_attributes = number_of_num_attributes + number_of_cat_attributes
-        print("\tgamma: " + str(self.gamma) + "\n\tcorrelated attributes: " + str(correlated_attributes))
+        print("\tgamma: " + str(self.gamma) +
+              "\n\tk: " + str(self.k) +
+              "\n\tcorrelated attributes: " + str(correlated_attributes))
 
         self.recipient_id = recipient_id
         fingerprint = self.create_fingerprint(recipient_id, secret_key)

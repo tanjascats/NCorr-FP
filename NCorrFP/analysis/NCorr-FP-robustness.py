@@ -173,7 +173,7 @@ def vertical_attack(dataset='adult', save_results='robustness-vertical'):
                  'k': [300, 450],
                  'fingerprint_length': [128],  # 128
                  'n_recipients': [20],
-                 'sk': [100 + i for i in range(10)],
+                 'sk': [100 + i for i in range(1, 10)], # todo: revert to range(10)
                  'id': [0],
                  'code': ['tardos']}  # 128
     attack_strength = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
@@ -284,6 +284,8 @@ def vertical_attack(dataset='adult', save_results='robustness-vertical'):
                                 fp_eta = utils.eta_squared(release_data, cat_col, num_col)
                                 delta_eta = abs((correlated_pairs_dict[pair] - fp_eta) / correlated_pairs_dict[pair])
                                 results[correlated_pairs_string[i]].append(delta_eta)
+        else:
+            print(f"------------\nMissing file: {file_name}\n------------")
     print(results)
     results_frame = pd.DataFrame(results)
     if save_results is not None:
@@ -312,11 +314,11 @@ def horizontal_attack(dataset='adult', save_results='robustness-horizontal'):
                                                                     threshold_num=0.70, threshold_cat=0.45, threshold_numcat=0.14)
     correlated_pairs_string = ["_".join(list(a)) for a in list(correlated_pairs_dict.keys())]
 
-    fp_params = {'gamma': [32],# 4, 8, 16, 32],
+    fp_params = {'gamma': [32],#, 8, 16, 32],#, 4, 8, 16, 32],
                  'k': [300, 450],
                  'fingerprint_length': [128],  # 128
                  'n_recipients': [20],
-                 'sk': [100 + i for i in range(10)],
+                 'sk': [100 + i for i in range(1, 10)],# todo: revert to range(10)
                  'id': [0],
                  'code': ['tardos']}  # 128
     attack_strength = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
@@ -345,7 +347,6 @@ def horizontal_attack(dataset='adult', save_results='robustness-horizontal'):
         # Check if it's a file (skip folders)
         if os.path.isfile(file_path):
             print(f"Reading file: {file_name}")
-
             # Open and read the file (assuming csv files here)
             try:
                 fingerprinted_data = pd.read_csv(file_path)
@@ -407,12 +408,13 @@ def horizontal_attack(dataset='adult', save_results='robustness-horizontal'):
                             fp_eta = utils.eta_squared(release_data, cat_col, num_col)
                             delta_eta = abs((correlated_pairs_dict[pair] - fp_eta) / correlated_pairs_dict[pair])
                             results[correlated_pairs_string[i]].append(delta_eta)
+        else:
+            print(f"\n------------\nMissing file: {file_name}\n------------\n")
     print(results)
     results_frame = pd.DataFrame(results)
     if save_results is not None:
         results_frame.to_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), save_results), index=False)
         print(f"Results saved in {os.path.join(os.path.dirname(os.path.abspath(__file__)), save_results)}")
-
     return results_frame
 
 
@@ -436,14 +438,14 @@ def flipping_attack(dataset='adult', save_results='robustness-flipping'):
                                                                     threshold_numcat=0.14)
     correlated_pairs_string = ["_".join(list(a)) for a in list(correlated_pairs_dict.keys())]
 
-    fp_params = {'gamma': [32],  # 4, 8, 16, 32],
+    fp_params = {'gamma': [8, 16, 32],  # 4, 8, 16, 32],
                  'k': [300, 450],
                  'fingerprint_length': [128],  # 128
                  'n_recipients': [20],
-                 'sk': [100 + i for i in range(10)],
+                 'sk': [100 + i for i in range(1, 10)],  # todo: revert to range(10)
                  'id': [0],
                  'code': ['tardos']}  # 128
-    attack_strength = [0.05, 0.1, 0.15, 0.20, 0.25, 0.3, 0.35, 0.4, 0.45]
+    attack_strength = [0.5, 0.6, 0.7, 0.8, 0.9]
     n_experiments = 3
     results = {key: [] for key in ['gamma', 'k', 'fingerprint_length', 'n_recipients', 'sk', 'id', 'code',
                                    'embedding_ratio',
@@ -534,6 +536,8 @@ def flipping_attack(dataset='adult', save_results='robustness-flipping'):
                             fp_eta = utils.eta_squared(release_data, cat_col, num_col)
                             delta_eta = abs((correlated_pairs_dict[pair] - fp_eta) / correlated_pairs_dict[pair])
                             results[correlated_pairs_string[i]].append(delta_eta)
+        else:
+            print(f"------------\nMissing file: {file_name}\n------------")
     print(results)
     results_frame = pd.DataFrame(results)
     if save_results is not None:

@@ -97,3 +97,22 @@ class FlippingAttack(Attack):
               str(time.time() - start) + " sec.")
 
         return modified_df
+
+
+class ClusterFlippingAttack(Attack):
+    def __init__(self):
+        super().__init__()
+
+    """
+        Knowledge attack for NCorr-FP
+        Clusters the data according to a NN algorithm. 
+       Flips 'fraction' data values inside the cluster. 
+       Runs the attack; gets a copy of 'dataset' with 'fraction' altered items
+       fraction [0,1]
+       """
+    def run(self, dataset, fraction, cluster_size=0.05, cluster=None, random_state=0):
+        start = time.time()
+        modified_df = dataset.copy()
+
+        # todo
+        return modified_df, cluster
