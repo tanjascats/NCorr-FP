@@ -92,6 +92,25 @@ def test_flipping_adult():
                                             'education-num'])
 
 
+def test_cluster_flipping():
+    scheme = NCorrFP(gamma=32, fingerprint_bit_length=64)
+
+    fingerprinted_data = scheme.insertion('adult', primary_key_name='Id', secret_key=100, recipient_id=4,
+                                          outfile='NCorrFP/outfiles/adult_fp_acc_wc_en_100.csv',
+                                          correlated_attributes=['relationship', 'marital-status', 'occupation',
+                                                                 'workclass', 'education-num'])
+    attack = attacks.bit_flipping_attack.InfluentialRecordFlippingAttack()
+    cluster = attack.find_influential_records(datasets.Adult(), 10000)
+    cluster.to_csv('cluster_10000_g4_k325_sk999.csv', index=False)
+    attacked_data, cluster = attack.run(dataset=fingerprinted_data, fraction=0.3, cluster=cluster)
+    #cluster.to_csv('cluster_1000.csv', index=False)
+    #attacked_data.to_csv('attacked.csv', index=False)
+    #print(attacked_data)
+    scheme.detection(attacked_data, secret_key=100, primary_key='Id',
+                     correlated_attributes=['relationship', 'marital-status', 'occupation', 'workclass',
+                                            'education-num'])
+
+
 def test_demo():
     scheme = NCorrFP(gamma=1, fingerprint_bit_length=16)
     data = "datasets/breast_cancer_full.csv"
@@ -276,5 +295,6 @@ if __name__ == '__main__':
     #test_gower_distance()
     #NCorrFP.NCorrFP.plot_runtime()
     #test_detection_continuous()
-    data = datasets.Adult()
-    scheme = NCorrFP(gamma=2, fingerprint_bit_length=64, k=100, number_of_recipients=10, fingerprint_code_type='hash')
+ #   data = datasets.Adult()
+ #   scheme = NCorrFP(gamma=2, fingerprint_bit_length=64, k=100, number_of_recipients=10, fingerprint_code_type='hash')
+    test_cluster_flipping()

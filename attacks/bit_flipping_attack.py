@@ -5,6 +5,9 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 import pandas as pd
+from NCorrFP.NCorrFP import NCorrFP
+from NCorrFP.demo import Demo
+from datasets import *
 
 
 class BitFlippingAttack(Attack):
@@ -102,7 +105,7 @@ class FlippingAttack(Attack):
         return modified_df
 
 
-class ClusterFlippingAttack(Attack):
+class InfluentialRecordFlippingAttack(Attack):
     def __init__(self):
         super().__init__()
 
@@ -113,107 +116,87 @@ class ClusterFlippingAttack(Attack):
        Runs the attack; gets a copy of 'dataset' with 'fraction' altered items
        fraction [0,1]
        """
-    def find_cluster(self, data, cluster_size, tolerance=10, max_iterations=100):
-        # Normalize the data
-        scaler = StandardScaler()
-        data_scaled = scaler.fit_transform(data)
+    def find_influential_records(self, data, cluster_size):
+        # direct approach: emulate the embedding with attacker's parameters
+        # list of arrays, arrays contain indices of neighbourhood
+        param = {'gamma': 4,  # , 4, 8, 16, 32], # --> might have some influence
+                 'k': int(0.01 * data.dataframe.shape[0]),  # 1% of data size (knowledgeable)
+                 'fingerprint_length': 100,  # , 256, 512],#, 128, 256],  # , 128, 256],
+                 'n_recipients': 20,
+                 'sk': 999,  # attacker's secret key
+                 'id': 0
+                 }
+        scheme = NCorrFP(gamma=param['gamma'], fingerprint_bit_length=param['fingerprint_length'], k=param['k'],
+                         number_of_recipients=param['n_recipients'], fingerprint_code_type='tardos')
+        fp_data = scheme.insertion(data, secret_key=param['sk'], recipient_id=param['id'], save_computation=True)
+        detected_fp, votes, suspect_probvec = scheme.detection(fp_data, secret_key=param['sk'],
+                                                               primary_key='Id')
+        demo = Demo(scheme)
+        neighborhoods = [
+            demo.insertion_iter_log[i]['neighbors'] for i in range(len(demo.insertion_iter_log))
+        ]
 
-        # Initial guess for the number of clusters
-        n_clusters = len(data) // cluster_size
+        # Flatten the list of neighbourhoods into a single array
+        all_indices = np.concatenate(neighborhoods)
 
-        iteration = 0
-        while iteration < max_iterations:
-            # Apply k-means clustering
-            kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-            kmeans.fit(data_scaled)
-            labels = kmeans.labels_
-            centroids = kmeans.cluster_centers_
+        # count the frequency of each index
+        index_series = pd.Series(all_indices)
+        frequency_counts = index_series.value_counts()
 
-            # Calculate the average distance to centroid for each cluster
-            distances = np.zeros(n_clusters)
-            cluster_sizes = np.zeros(n_clusters)
-            for i in range(n_clusters):
-                cluster_points = data_scaled[labels == i]
-                centroid = centroids[i]
-                distances[i] = np.mean(np.sqrt(np.sum((cluster_points - centroid) ** 2, axis=1)))
-                cluster_sizes[i] = len(cluster_points)
+        # the top N most frequent indices, i.e. the most influential records
+        top_n = cluster_size  # This is an absolute number of records
+        top_n_idx = frequency_counts.head(top_n).keys()
 
-            # Identify the cluster with the minimum average distance
-            best_cluster_idx = np.argmin(distances)
-            best_cluster_size = cluster_sizes[best_cluster_idx]
+        return data.dataframe.iloc[top_n_idx]
 
-            # Check if the size of the best cluster is within the tolerance of the desired size
-            if abs(best_cluster_size - cluster_size) <= tolerance:
-                print(f"Found suitable cluster in {iteration + 1} iterations.")
-                best_cluster_members = data[labels == best_cluster_idx]
-                return pd.DataFrame(best_cluster_members, columns=data.columns), best_cluster_size
-
-            # Adjust the number of clusters
-            if best_cluster_size < cluster_size:
-                n_clusters -= max(1, n_clusters // 10)
-            else:
-                n_clusters += max(1, n_clusters // 10)
-
-            iteration += 1
-
-        print("Maximum iterations reached without finding a suitable cluster.")
-        return None, None
-
-    def run(self, dataset, fraction, cluster_size_factor=5, cluster=None, random_state=0):
+    def run(self, dataset, fraction, cluster=None, data_name='adult', cluster_length=10000, random_state=0):
         """
-
+        Runs the cluster & flipp attack.
         Args:
             dataset:
             fraction: (float) flips fraction*full_data_size values (all of them inside the cluster)
-            cluster_size_factor:
-            cluster:
+            cluster_length:
+            cluster: (pandas.DataFrame)
             random_state:
 
-        Returns:
+        Returns: modified dataset, cluster
 
         """
-        # adapt the cluster size factor --> cs_factor*fraction < 1 # todo
-
         start = time.time()
         modified_df = dataset.copy()
 
+        if data_name == 'adult':
+            d = Adult()
+        else:
+            d = None
+
+        # find the most influential records
         if cluster is None:
-            cluster, size = self.find_cluster(dataset, cluster_size=10)  # todo
+            if fraction * len(
+                    modified_df) >= cluster_length:  # if we are trying to flip more than there is n the cluster
+                # increase the cluster
+                cluster_length = int(np.ceil(fraction * len(modified_df)))
+                print("!Warning: all data values in the cluster are being flipped.")
+            cluster = self.find_influential_records(d, cluster_size=cluster_length)
+        else:
+            print('Cluster size: ', len(cluster))
+            print('- that is {}% of data length'.format(100*len(cluster)/len(modified_df)))
+            print('Trying to flip ', fraction)
+            if len(cluster) < fraction*len(modified_df):
+                exit('Cluster is not sufficiently large.')
 
-        # Ensure that specific_rows is a valid subset of DataFrame's index
-        specific_rows = [row for row in cluster.index if row in dataset.index]
+        cluster_frac = fraction*modified_df.size / cluster.size
 
-        # Calculate the number of elements in the specified rows
-        total_elements = modified_df.loc[specific_rows].size
-        n = int(fraction * total_elements)
+        # flip the values inside the cluster
+        flipping = FlippingAttack()
+        modified_cluster = flipping.run(cluster, cluster_frac, random_state)
+        print(modified_cluster)
 
-        if fraction > 1.0:
-            raise ValueError("Number of flips exceeds the total number of elements in the DataFrame.")
+        # fill in the flipped cluster
+        modified_df.update(modified_cluster)
 
-        # Randomly choose n indices from the specified rows in the DataFrame
-        np.random.seed(random_state)
-        row_indices = np.random.choice(specific_rows, size=n, replace=True)
-        col_indices = np.random.randint(0, modified_df.shape[1], size=n)
-
-        # Runtime improvement: precompute unique values for each column
-        unique_values = {col: modified_df[col].unique() for col in modified_df.columns}
-
-        # Iterate over selected row and column indices to flip values
-        for row, col in zip(row_indices, col_indices):
-            col_name = modified_df.columns[col]
-            column_values = unique_values[col_name]
-            current_value = modified_df.at[row, col_name]
-
-            # Exclude the current value to ensure a different value is chosen
-            possible_values = column_values[column_values != current_value]
-            if possible_values.size > 0:
-                new_value = np.random.choice(possible_values)
-                modified_df.at[row, col_name] = new_value
-            else:
-                # In case all values in the column are the same
-                modified_df.at[row, col_name] = current_value
-
-        print("Flipping attack runtime on " + str(fraction * 100) + "% of entries: " +
+        print("Flipping attack runtime on " + str(fraction * 100) +
+              "% of entries: ({}% of cluster entries)".format(100*cluster_frac) +
               str(time.time() - start) + " sec.")
 
-        return modified_df
+        return modified_df, cluster
