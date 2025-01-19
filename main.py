@@ -93,15 +93,15 @@ def test_flipping_adult():
 
 
 def test_cluster_flipping():
-    scheme = NCorrFP(gamma=32, fingerprint_bit_length=64)
+    scheme = NCorrFP(gamma=4, fingerprint_bit_length=64)
 
     fingerprinted_data = scheme.insertion('adult', primary_key_name='Id', secret_key=100, recipient_id=4,
                                           outfile='NCorrFP/outfiles/adult_fp_acc_wc_en_100.csv',
                                           correlated_attributes=['relationship', 'marital-status', 'occupation',
                                                                  'workclass', 'education-num'])
     attack = attacks.bit_flipping_attack.InfluentialRecordFlippingAttack()
-    cluster = attack.find_influential_records(datasets.Adult(), 10000)
-    cluster.to_csv('cluster_10000_g4_k325_sk999.csv', index=False)
+    cluster = attack.find_influential_records(datasets.Adult(), 'all')
+    cluster.to_csv('cluster_g1_k325_sk999.csv', index=False)
     attacked_data, cluster = attack.run(dataset=fingerprinted_data, fraction=0.3, cluster=cluster)
     #cluster.to_csv('cluster_1000.csv', index=False)
     #attacked_data.to_csv('attacked.csv', index=False)

@@ -116,11 +116,13 @@ class InfluentialRecordFlippingAttack(Attack):
        Runs the attack; gets a copy of 'dataset' with 'fraction' altered items
        fraction [0,1]
        """
-    def find_influential_records(self, data, cluster_size):
+    def find_influential_records(self, data, cluster_size, gamma=1, k=None):
         # direct approach: emulate the embedding with attacker's parameters
         # list of arrays, arrays contain indices of neighbourhood
-        param = {'gamma': 4,  # , 4, 8, 16, 32], # --> might have some influence
-                 'k': int(0.01 * data.dataframe.shape[0]),  # 1% of data size (knowledgeable)
+        if k is None:
+            k = int(0.01 * data.dataframe.shape[0])
+        param = {'gamma': gamma,  # , 4, 8, 16, 32], # --> might have some influence
+                 'k': k,  # 1% of data size (knowledgeable)
                  'fingerprint_length': 100,  # , 256, 512],#, 128, 256],  # , 128, 256],
                  'n_recipients': 20,
                  'sk': 999,  # attacker's secret key
@@ -144,14 +146,17 @@ class InfluentialRecordFlippingAttack(Attack):
         frequency_counts = index_series.value_counts()
 
         # the top N most frequent indices, i.e. the most influential records
-        top_n = cluster_size  # This is an absolute number of records
-        top_n_idx = frequency_counts.head(top_n).keys()
+        if cluster_size == 'all':
+            top_n_idx = frequency_counts.keys()
+        else:
+            top_n = cluster_size  # This is an absolute number of records
+            top_n_idx = frequency_counts.head(top_n).keys()
 
         return data.dataframe.iloc[top_n_idx]
 
     def run(self, dataset, fraction, cluster=None, data_name='adult', cluster_length=10000, random_state=0):
         """
-        Runs the cluster & flipp attack.
+        Runs the cluster & flip attack.
         Args:
             dataset:
             fraction: (float) flips fraction*full_data_size values (all of them inside the cluster)
