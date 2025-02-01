@@ -17,7 +17,7 @@ import utils
 from NCorr_FP_fidelity import *
 
 
-def collusion(dataset='covertype-sample', save_results='robustness-collusion'):
+def collusion(dataset='adult', save_results='robustness-collusion'):
     """
     Perform analysis on robustness to collusion attack for NCorr-FP
     Args:
@@ -42,20 +42,21 @@ def collusion(dataset='covertype-sample', save_results='robustness-collusion'):
     print(data.dataframe.head(3))
 
     # --- Define parameters --- #
-    fp_params = {'gamma': [2],
+    fp_params = {'gamma': [8], # 8
                  'k': [300],
-                 'fingerprint_length': [128],# 128
+                 'fingerprint_length': [128, 256, 512, 1024, 64],#128, 256, 512, 1024, 64],# 128
                  'n_recipients': [20],
-                 'sk': [100]}  # 128
-    collusion_params = {'n_colluders': [2, 3, 5, 10],
-                        'strategy': ['avg', 'random', 'random_flip'],  # random (where they just choose a random new value)#
+                 'sk': [100]}
+    collusion_params = {'n_colluders': [2, 3, 5, 10],#, 3],#, 5, 10],
+                        'strategy': ['random_flip'], #, 'avg', 'random', 'random_flip'],  # random (where they just choose a random new value)#
                         'threshold': [1]} # 1.2, 0.8], for this I dont need to run it multiple times, just save the accusation scores
     n_experiments = 10
     # --- Initialise the results --- #
     results = {key: [] for key in list(fp_params.keys()) +
                                   list(collusion_params.keys()) +
                                   ['embedding_ratio', 'colluders', 'accusation_scores',
-                                   'total_accusations', 'hit_abs', 'hit_rate', 'false_accusation_abs', 'false_accusation_rate', 'recall']}
+                                   'total_accusations', 'hit_abs', 'hit_rate', 'false_accusation_abs',
+                                   'false_accusation_rate', 'recall', 'colluders']}
 
     # --- Run the collusions --- #
     combinations = list(product(*fp_params.values()))
@@ -71,15 +72,17 @@ def collusion(dataset='covertype-sample', save_results='robustness-collusion'):
             c_param = dict(zip(collusion_params.keys(), collusion_combination))
             # Run n random experiments with each collusion setting
             for i in range(n_experiments):
+                np.random.seed(int(datetime.now().timestamp()))  # needed because another seed is set elsewhere
                 colluders = np.random.choice([i for i in range(param['n_recipients'])],
                                              c_param['n_colluders'], replace=False)
-                print(colluders)
+                print('Colluders: ', colluders)
 
                 files_to_collude = []
                 for c in colluders:
                     param_string = '_'.join(f"{key}{value}" for key, value in param.items())
                     file_name = data.name + "_" + param_string + '_id' + str(c) + '_codetardos.csv'
-                    file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), data.name + "-fp", file_name)
+                    file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'fp_datasets', 'NCorrFP',
+                                             data.name + "-fp", file_name)
                     files_to_collude.append(file_path)
                     # todo append the results with colluder ids
 
@@ -141,6 +144,7 @@ def collusion(dataset='covertype-sample', save_results='robustness-collusion'):
                 print(f'Recall: {recall}')
                 results['recall'].append(recall)
 
+    print(results)
     results_frame = pd.DataFrame(results)
     if save_results is not None:
         results_frame.to_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), save_results), index=False)
@@ -569,14 +573,14 @@ def cluster_flipping(dataset='adult', save_results='robustness-clusterflipping')
                                                                     threshold_numcat=0.14)
     correlated_pairs_string = ["_".join(list(a)) for a in list(correlated_pairs_dict.keys())]
 
-    fp_params = {'gamma': [2],#8, 16, 32],  # 4, 8, 16, 32],
+    fp_params = {'gamma': [32],#8, 16, 32],  # 4, 8, 16, 32],
                  'k': [300, 450],
                  'fingerprint_length': [128],  # 128
                  'n_recipients': [20],
                  'sk': [100 + i for i in range(10)],
                  'id': [0],
                  'code': ['tardos']}  # 128
-    attack_strength = [0.3, 0.35, 0.4, 0.45]
+    attack_strength = [0.3, 0.35, 0.4, 0.45, 0.5]#, 0.4, 0.45, 0.5, 0.55]
     n_experiments = 3
     results = {key: [] for key in ['gamma', 'k', 'fingerprint_length', 'n_recipients', 'sk', 'id', 'code',
                                    'embedding_ratio',
@@ -609,9 +613,10 @@ def cluster_flipping(dataset='adult', save_results='robustness-clusterflipping')
             except pd.errors.EmptyDataError:
                 print(f"Empty file: {file_name}")
                 continue
+            buffer = 1.25
             for strength in attack_strength:
-                if 5*strength <= 1:
-                    cluster = pd.read_csv('cluster_g1_k325_sk999.csv').head(int(5*strength*len(data.dataframe)))
+                if buffer*strength <= 1:
+                    cluster = pd.read_csv('cluster_g1_k325_sk999.csv').head(int(buffer*strength*len(data.dataframe)))
                     cluster.index = cluster['Id']
                 else:
                     cluster = pd.read_csv('cluster_g1_k325_sk999.csv')
@@ -711,7 +716,7 @@ def cluster_horizontal(dataset='adult', save_results='robustness-clusterhorizont
                  'sk': [100 + i for i in range(10)],
                  'id': [0],
                  'code': ['tardos']}  # 128
-    attack_strength = [0.1, 0.2, 0.3, 0.4, 0.5]
+    attack_strength = [0.9] #, 0.7, 0.8, 0.9]
     cluster_factor = 1.5
     n_experiments = 3
     results = {key: [] for key in ['gamma', 'k', 'fingerprint_length', 'n_recipients', 'sk', 'id', 'code',
@@ -840,14 +845,14 @@ def cluster_flipping_exact_param(dataset='adult', save_results='robustness-clust
                                                                     threshold_numcat=0.14)
     correlated_pairs_string = ["_".join(list(a)) for a in list(correlated_pairs_dict.keys())]
 
-    fp_params = {'gamma': [2],#8, 16, 32],  # 4, 8, 16, 32],
+    fp_params = {'gamma': [32],#8, 16, 32],  # 4, 8, 16, 32],
                  'k': [300, 450],
                  'fingerprint_length': [128],  # 128
                  'n_recipients': [20],
                  'sk': [100 + i for i in range(10)],
                  'id': [0],
                  'code': ['tardos']}  # 128
-    attack_strength = [0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55]
+    attack_strength = [0.3, 0.35, 0.4, 0.45, 0.5]
     n_experiments = 3
     results = {key: [] for key in ['gamma', 'k', 'fingerprint_length', 'n_recipients', 'sk', 'id', 'code',
                                    'embedding_ratio',
@@ -881,12 +886,13 @@ def cluster_flipping_exact_param(dataset='adult', save_results='robustness-clust
                 print(f"Empty file: {file_name}")
                 continue
             cluster_name = 'cluster_g{}_k{}_sk999.csv'.format(param['gamma'], param['k'])
+            buffer = 1.25
             for strength in attack_strength:
-                if 1.25*strength <= 1:  # instead of changing entire selected cluster, give a buffer of +25%
-                    cluster = pd.read_csv(cluster_name).head(int(5*strength*len(data.dataframe)))
+                cluster = pd.read_csv(cluster_name)
+                if buffer*strength <= 1:  # instead of changing entire selected cluster, give a buffer of +25%
+                    cluster = cluster.head(int(buffer*strength*len(data.dataframe)))
                     cluster.index = cluster['Id']
                 else:  # if this is exceeding the data size, then limit to the data size
-                    cluster = pd.read_csv(cluster_name)
                     cluster.index = cluster['Id']
                 for exp in range(n_experiments):
                     scheme = NCorrFP(gamma=param['gamma'], fingerprint_bit_length=param['fingerprint_length'],
@@ -912,13 +918,13 @@ def cluster_flipping_exact_param(dataset='adult', save_results='robustness-clust
                     # Fidelity of the released data
                     accuracy = 1.0 - strength
                     results['accuracy'].append(accuracy)
-                    print("--Accuracy ", accuracy)
+ #                   print("--Accuracy ", accuracy)
                     hellinger_dist = np.mean(list(hellinger_distance(data.dataframe, release_data).values()))
                     results['hellinger_distance'].append(hellinger_dist)
-                    print("--Hellinger ", hellinger_dist)
+#                    print("--Hellinger ", hellinger_dist)
                     kl_div = np.mean(list(kl_divergence_kde(data.dataframe, release_data).values()))
                     results['kl_divergence'].append(kl_div)
-                    print("--KL divergence: ", kl_div)
+ #                   print("--KL divergence: ", kl_div)
 
                     numerical_columns = data.dataframe.drop(['Id'], axis=1).select_dtypes(include=['number'])
                     categorical_columns = data.dataframe.drop(['Id'], axis=1).select_dtypes(
@@ -947,7 +953,7 @@ def cluster_flipping_exact_param(dataset='adult', save_results='robustness-clust
                             results[correlated_pairs_string[i]].append(delta_eta)
         else:
             print(f"------------\nMissing file: {file_name}\n------------")
-    print(results)
+    # print(results)
     results_frame = pd.DataFrame(results)
     if save_results is not None:
         results_frame.to_csv(os.path.join(os.path.dirname(os.path.abspath(__file__)), save_results), index=False)
@@ -976,14 +982,14 @@ def cluster_horizontal_exact_param(dataset='adult', save_results='robustness-clu
                                                                     threshold_numcat=0.14)
     correlated_pairs_string = ["_".join(list(a)) for a in list(correlated_pairs_dict.keys())]
 
-    fp_params = {'gamma': [16, 32],#8, 16, 32],  # 4, 8, 16, 32],
-                 'k': [300, 450],
+    fp_params = {'gamma': [4],#8, 16, 32],  # 4, 8, 16, 32],
+                 'k': [300],#, 450],
                  'fingerprint_length': [128],  # 128
                  'n_recipients': [20],
-                 'sk': [100 + i for i in range(10)],
+                 'sk': [100],# + i for i in range(10)],
                  'id': [0],
                  'code': ['tardos']}  # 128
-    attack_strength = [0.6, 0.7, 0.8, 0.9]
+    attack_strength = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     cluster_factor = 1.25
     n_experiments = 3
     results = {key: [] for key in ['gamma', 'k', 'fingerprint_length', 'n_recipients', 'sk', 'id', 'code',
@@ -1017,7 +1023,9 @@ def cluster_horizontal_exact_param(dataset='adult', save_results='robustness-clu
             except pd.errors.EmptyDataError:
                 print(f"Empty file: {file_name}")
                 continue
-            cluster_file = 'cluster_g{}_k{}_sk999.csv'.format(param['gamma'], param['k'])
+            # TODO DELETE the following line
+            cluster_file = 'cluster_g{}_k{}_sk100.csv'.format(param['gamma'], param['k'])
+            #cluster_file = 'cluster_g{}_k{}_sk999.csv'.format(param['gamma'], param['k'])
             for strength in attack_strength:
                 if cluster_factor*strength <= 1:
                     cluster = pd.read_csv(cluster_file).head(int(cluster_factor*strength*len(data.dataframe)))
@@ -1101,12 +1109,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # collaboration attacks
-#    collusion(args.dataset)
+    collusion(args.dataset)
     # 1-user attack
 #    horizontal_attack()
 #    vertical_attack()
 #    flipping_attack()
-#    cluster_flipping()
+#    cluster_flipping()  # the second  most disruptive
 #    cluster_horizontal()
-#    cluster_flipping_exact_param()
-    cluster_horizontal_exact_param()
+#    cluster_flipping_exact_param()  # the most disruptive
+#    cluster_horizontal_exact_param()

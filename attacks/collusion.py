@@ -1,10 +1,11 @@
+import datetime
+
 from NCorrFP.NCorrFP import NCorrFP
 from fp_codes import tardos
 import pandas as pd
 import numpy as np
 from utils import *
 from collections import Counter
-
 
 
 # testing naive approaches to collusion attack
@@ -63,6 +64,7 @@ def collude_datasetes_by_avg(dataset_paths):
     Returns:
         pd.DataFrame: Merged DataFrame with averaged values where any disagreements occur.
     """
+    print('Collusion strategy: avg')
     if len(dataset_paths) < 2:
         raise ValueError("At least two DataFrames are required for comparison.")
 
@@ -82,7 +84,7 @@ def collude_datasetes_by_avg(dataset_paths):
     stacked = np.stack([df.values for df in dataframes])
 
     # Initiate the colluded dataset
-    merged_df = pd.DataFrame(stacked[0], columns=ref_columns).copy()
+    merged_df = pd.DataFrame(stacked[0], columns=ref_columns).copy(deep=True)
 
     # Handle numerical attributes
     for col in numerical_columns:
@@ -94,7 +96,7 @@ def collude_datasetes_by_avg(dataset_paths):
         # Calculate the mean along the new axis for numerical values
         mean_values = np.mean(column_values, axis=0)
         # Replace disagreements with the mean
-        merged_df[col].iloc[disagreements] = mean_values[disagreements]  # todo: change to: merged_df.iloc[disagreements, col] = mean_values[disagreements]
+        merged_df.loc[disagreements, col] = mean_values[disagreements]
 
     # Handle categorical attributes
     for col in categorical_columns:
@@ -103,9 +105,14 @@ def collude_datasetes_by_avg(dataset_paths):
         column_values = stacked[:, :, col_idx]
         # For each row, determine the most frequent value
         for row_idx in range(column_values.shape[1]):
-            value_counts = Counter(column_values[:, row_idx])
-            most_common_value, _ = value_counts.most_common(1)[0]
-            merged_df[col].iloc[row_idx] = most_common_value  # todo: change to merged_df.iloc[row_idx, col] = most_common_value
+            value_counts = Counter(column_values[:, row_idx])  # biased towards the first dataset in order if counts are tied (always the case in 2-collusion) so we need to shuffle
+            max_count = max(value_counts.values())
+            top_candidates = [val for val, count in value_counts.items() if count == max_count]
+            if len(top_candidates) > 1:  # shuffle top-candidates if there's a tie
+                np.random.shuffle(top_candidates)
+            # Select the first candidate (either the only candidate or one randomly chosen among the tied ones)
+            most_common_value = top_candidates[0]
+            merged_df.loc[row_idx, col] = most_common_value
 
     return merged_df
 
@@ -148,6 +155,7 @@ def collude_datasetes_by_random(dataset_paths):
             attribute_domain = np.unique(stacked[:, :, ref_columns.get_loc(col)])
 
             # Generate random values from the domain for the disagreement positions
+            np.random.seed(int(datetime.datetime.now().timestamp()))  # np.random is seeded elsewhere
             random_values = np.random.choice(attribute_domain, size=disagreements[:, ref_columns.get_loc(col)].sum())
 
             # Insert random values in positions where disagreements occur

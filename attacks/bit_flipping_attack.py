@@ -116,16 +116,16 @@ class InfluentialRecordFlippingAttack(Attack):
        Runs the attack; gets a copy of 'dataset' with 'fraction' altered items
        fraction [0,1]
        """
-    def find_influential_records(self, data, cluster_size, gamma=1, k=None):
+    def find_influential_records(self, data, cluster_size, gamma=1, k=None, sk=999, fp_len=100):
         # direct approach: emulate the embedding with attacker's parameters
         # list of arrays, arrays contain indices of neighbourhood
         if k is None:
             k = int(0.01 * data.dataframe.shape[0])
         param = {'gamma': gamma,  # , 4, 8, 16, 32], # --> might have some influence
                  'k': k,  # 1% of data size (knowledgeable)
-                 'fingerprint_length': 100,  # , 256, 512],#, 128, 256],  # , 128, 256],
+                 'fingerprint_length': fp_len,  # , 256, 512],#, 128, 256],  # , 128, 256],
                  'n_recipients': 20,
-                 'sk': 999,  # attacker's secret key
+                 'sk': sk,  # attacker's secret key
                  'id': 0
                  }
         scheme = NCorrFP(gamma=param['gamma'], fingerprint_bit_length=param['fingerprint_length'], k=param['k'],

@@ -64,12 +64,12 @@ if __name__ == '__main__':
     print(data.dataframe.head(3))
 
     # --- Define parameters --- #
-    params = {'gamma': [16],
-              'k': [450],#, 450], #, 1000], # 1% and 1,5%
-              'fingerprint_length': [128],#, 256, 512],#, 128, 256],  # , 128, 256],
+    params = {'gamma': [8],
+              'k': [300],#, 450], #, 1000], # 1% and 1,5%
+              'fingerprint_length': [64],#, 256, 512, 1024],#, 256, 512],#, 128, 256],  # , 128, 256],
               'n_recipients': [20],
-              'sk': [100 + i for i in range(10)],  # #sk-s = #experiments # todo: revert to range(10)
-              'id': [0],# for i in range(20)],
+              'sk': [100],# + i for i in range(10)],  # #sk-s = #experiments # todo: revert to range(10)
+              'id': [i for i in range(20)],
               'code': ['tardos']#i for i in range(20)]  # + i for i in range(10)]}  # 10)]}  # #sk-s = #experiments
               }
     print('Starting the fingerprint embeddings with the following parameters: ')
