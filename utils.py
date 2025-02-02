@@ -463,8 +463,12 @@ def extract_mutually_correlated_pairs(dataframe, threshold_num=0.80, threshold_c
     correlation_dict = {}
 
     # Identify numerical and categorical columns
-    numerical_columns = dataframe.drop(['Id'], axis=1).select_dtypes(include=['number'])
-    categorical_columns = dataframe.drop(['Id'], axis=1).select_dtypes(include=['object', 'category'])
+    if 'Id' in dataframe.columns:
+        numerical_columns = dataframe.drop(['Id'], axis=1).select_dtypes(include=['number'])
+        categorical_columns = dataframe.drop(['Id'], axis=1).select_dtypes(include=['object', 'category'])
+    else:
+        numerical_columns = dataframe.select_dtypes(include=['number'])
+        categorical_columns = dataframe.select_dtypes(include=['object', 'category'])
 
     # Numerical correlations (Pearson's)
     corr_matrix = numerical_columns.corr()

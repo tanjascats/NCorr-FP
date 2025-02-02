@@ -1218,13 +1218,12 @@ class NCorrFP():
         return fingerprinted_relation
 
     def detection_vpk(self, dataset, secret_key, correlated_attributes=None, original_columns=None,
-                  save_computation=True, balltree=None):
+                      save_computation=True, balltree=None):
         """
 
         Args:
             dataset:
             secret_key:
-            primary_key:
             correlated_attributes:
             original_columns:
             save_computation:
@@ -1266,38 +1265,38 @@ class NCorrFP():
 
         # encode the categorical values
         label_encoders = dict()
+        relation_fp_enc = relation_fp.dataframe.copy()
         for cat in categorical_attributes:
             label_enc = LabelEncoder()
-            relation_fp.dataframe[cat] = label_enc.fit_transform(relation_fp.dataframe[cat])
+            relation_fp_enc[cat] = label_enc.fit_transform(relation_fp.dataframe[cat])
             label_encoders[cat] = label_enc
 
         start = time.time()
         correlated_attributes = parse_correlated_attrs(correlated_attributes, relation_fp.dataframe)
-        relation_fp_norm = (relation_fp.dataframe - relation_fp.dataframe.min()) / (
-                    relation_fp.dataframe.max() - relation_fp.dataframe.min())
+#        relation_fp_norm = (relation_fp.dataframe - relation_fp.dataframe.min()) / (
+#                    relation_fp.dataframe.max() - relation_fp.dataframe.min())
         if balltree is None:
-            balltree = init_balltrees(correlated_attributes, relation_fp.dataframe.drop('Id', axis=1),
+            balltree = init_balltrees(correlated_attributes, relation_fp_enc,
                                       self.dist_metric_discrete, self.dist_metric_continuous,
                                       categorical_attributes)
 
         count = [[0, 0] for x in range(self.fingerprint_bit_length)]
         self.detection_iter_log = []  # reset the iteration log
         for r in relation_fp.dataframe.iterrows():
+            r_vpk = vpk.record_vpk(r[1])
             seed = int(
-                (secret_key << self.__primary_key_len) + r[1].iloc[0])  # primary key must be the first column
+                (secret_key << self.__primary_key_len) + r_vpk)  # primary key must be the first column
             random.seed(seed)
             # this tuple was marked
             if random.choices([0, 1], [1 / self.gamma, 1 - 1 / self.gamma]) == [0]:
                 iteration = {'seed': seed, 'row_index': r[1].iloc[0]}
 
                 # this attribute was marked (skip the primary key)
-                attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # add 1 to skip the primary key
-                attr_name = r[1].index[attr_idx]
+                attribute_val = vpk.record_marking_attr(r[1])
+                attr_name = r[1][r[1] == attribute_val].index.tolist()[0]
                 if attr_name in attacked_columns:  # if this columns was deleted by VA, don't collect the votes
                     continue
                 iteration['attribute'] = attr_name
-
-                attribute_val = r[1].iloc[attr_idx]
                 iteration['attribute_val'] = attribute_val
 
                 # fingerprint bit
@@ -1317,7 +1316,6 @@ class NCorrFP():
                 else:
                     other_attributes = r[1].index.tolist().copy()
                     other_attributes.remove(attr_name)
-                    other_attributes.remove('Id')
                     bt = balltree[attr_name]
                 if self.distance_based:
                     neighbours, dist = bt.query_radius([relation_fp.dataframe[other_attributes].loc[r[1].iloc[0]]],
@@ -1340,7 +1338,7 @@ class NCorrFP():
                         dist = dist[0].tolist()
 
                     else:  # we allow potential non-determinism to reduce the execusion time
-                        dist, neighbours = bt.query([relation_fp.dataframe[other_attributes].loc[r[0]]],
+                        dist, neighbours = bt.query([relation_fp_enc[other_attributes].loc[r[0]]],
                                                     k=3 * self.k)
                         k_dist = dist[0][self.k - 1]
                         neighbours = neighbours[0][dist[0] <= k_dist]  # get k neighbours plus the ties

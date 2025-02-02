@@ -26,8 +26,11 @@ def test_knn():
 def test_vpk():
     scheme = NCorrFP(gamma=5, fingerprint_bit_length=128)
     fingerprinted_data = scheme.insertion_vpk('adult-vpk', secret_key=101, recipient_id=4, outfile='adult_vpk.csv')
-    print(fingerprinted_data.head())
 
+    suspect = scheme.detection_vpk(fingerprinted_data, secret_key=101,
+                               correlated_attributes=['relationship', 'marital-status', 'occupation', 'workclass',
+                                                      'education-num'])
+    print(suspect)
 
 def knn_adult_census():
     scheme = NCorrFP(gamma=10, fingerprint_bit_length=32)
