@@ -1,5 +1,0 @@
-gamma,k,fingerprint_length,n_recipients,sk,n_colluders,strategy,threshold,embedding_ratio,colluders,accusation_scores,total_accusations,hit_abs,hit_rate,false_accusation_abs,false_accusation_rate,recall
-2,300,128,20,100,2,avg,1,0.5,[14 17],"[64.46268779 65.84898215 67.92842369 66.54212933 66.54212933 63.76954061
- 65.15583497 70.00786524 67.92842369 63.07639343 65.15583497 63.76954061
- 64.46268779 63.07639343 76.24618986 63.76954061 67.92842369 78.3256314
- 60.99695189 56.83806881]",2,2,1.0,0,0.0,1.0

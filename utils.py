@@ -50,6 +50,8 @@ def import_dataset_from_file(data_path, primary_key_attribute=None):
     elif data_path == 'adult':
         dataset = pd.read_csv(root + "/datasets/adult_train_id.csv")
         primary_key_attribute = 'Id'
+    elif data_path == 'adult-vpk':
+        dataset = pd.read_csv(root + "/datasets/adult_train.csv")
     # other datasets require relative path
     else:
         dataset = pd.read_csv(data_path)

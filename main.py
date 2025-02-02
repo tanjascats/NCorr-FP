@@ -23,6 +23,12 @@ def test_knn():
     "irradiat","recurrence"])
 
 
+def test_vpk():
+    scheme = NCorrFP(gamma=5, fingerprint_bit_length=128)
+    fingerprinted_data = scheme.insertion_vpk('adult-vpk', secret_key=101, recipient_id=4, outfile='adult_vpk.csv')
+    print(fingerprinted_data.head())
+
+
 def knn_adult_census():
     scheme = NCorrFP(gamma=10, fingerprint_bit_length=32)
 
@@ -297,4 +303,4 @@ if __name__ == '__main__':
     #test_detection_continuous()
  #   data = datasets.Adult()
  #   scheme = NCorrFP(gamma=2, fingerprint_bit_length=64, k=100, number_of_recipients=10, fingerprint_code_type='hash')
-    test_cluster_flipping()
+    test_vpk()

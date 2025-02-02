@@ -42,12 +42,12 @@ def collusion(dataset='adult', save_results='robustness-collusion'):
     print(data.dataframe.head(3))
 
     # --- Define parameters --- #
-    fp_params = {'gamma': [8], # 8
+    fp_params = {'gamma': [8],
                  'k': [300],
-                 'fingerprint_length': [128, 256, 512, 1024, 64],#128, 256, 512, 1024, 64],# 128
+                 'fingerprint_length': [512, 1024, 64],#, 512, 1024, 64], #128, 256, 512, 1024, 64],# 128
                  'n_recipients': [20],
                  'sk': [100]}
-    collusion_params = {'n_colluders': [2, 3, 5, 10],#, 3],#, 5, 10],
+    collusion_params = {'n_colluders': [2, 3, 5, 10],
                         'strategy': ['random_flip'], #, 'avg', 'random', 'random_flip'],  # random (where they just choose a random new value)#
                         'threshold': [1]} # 1.2, 0.8], for this I dont need to run it multiple times, just save the accusation scores
     n_experiments = 10

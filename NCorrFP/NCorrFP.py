@@ -16,6 +16,7 @@ from scipy.spatial.distance import minkowski
 from fp_codes import tardos
 from utils import *
 from fp_codes.tardos import *
+import vpk
 
 _MAXINT = 2**31 - 1
 
@@ -979,6 +980,425 @@ class NCorrFP():
         runtime = time.time() - start
         if runtime < 1:
             print("Runtime: " + str(int(runtime)*1000) + " ms.")
+        else:
+            print("Runtime: " + str(round(runtime, 2)) + " sec.")
+        # todo: define a return statement -- just the most likely recipient? Probability vec?
+        return fingerprint_template, count, exact_match_scores
+
+    def detect_colluders(self, pirate_fingerprint, secret_key, threshold=1):
+        """
+        Detect colluders by calculating suspicion scores based on the pirate fingerprint.
+        todo: - Weight the Matches Based on Probability: For each bit in the detected fingerprint, calculate the probability that this bit would have been contributed by a given user in the collusion. Use a scoring function where each matched bit contributes to a user's suspicion score, weighted by its probability.
+
+        Args:
+        codes (np.ndarray): Matrix of fingerprint codes for all users.
+        pirate_fingerprint (np.ndarray): The pirate fingerprint obtained from collusion.
+        t (float): The factor for standard deviation affecting the threshold for accusation. Larger values lead to more confidence.
+
+        Returns:
+        list: List of suspected colluders (user indices). List of suspicion scores.
+        """
+        codebook = np.array([self.create_fingerprint(recipient_id=i, secret_key=secret_key, show_messages=False)
+                             for i in range(self.number_of_recipients)])
+
+        n_users, code_length = codebook.shape
+        suspicion_scores = np.zeros(n_users)
+
+        # Calculate suspicion score for each user
+        for i in range(n_users):
+            for j in range(code_length):
+                if codebook[i][j] == pirate_fingerprint[j]:
+                    suspicion_scores[i] += np.log(2)  # Positive contribution for matching bit
+                else:
+                    suspicion_scores[i] += np.log(1)  # No contribution for non-matching bit (log(1) = 0)
+
+        threshold = suspicion_scores.mean() + threshold * suspicion_scores.std()
+
+        # Accuse users whose suspicion score exceeds the threshold
+        suspected_colluders = [i for i, score in enumerate(suspicion_scores) if score >= threshold]
+
+        return suspected_colluders, suspicion_scores
+
+    def insertion_vpk(self, dataset_name, recipient_id, secret_key, outfile=None,
+                  correlated_attributes=None, save_computation=True):
+        """
+        Embeds a fingerprint into the data using NCorrFP algorithm.
+        Args:
+            dataset_name: string name of the predefined test dataset
+            recipient_id: unique identifier of the recipient
+            secret_key: owner's secret key
+            primary_key_name: optional - name of the primary key attribute. If not specified, index is used
+            outfile:  optional - name of the output file for writing fingerprinted dataset
+            correlated_attributes: optional - list of names of correlated attributes. If multiple groups of correlated attributes exist, they collectivelly need to be passed as a list of lists. If not specified, all attributes will be used for neighbourhood search.
+
+        Returns: fingerprinted dataset (pandas.DataFrame)
+
+        """
+        print("Start the NCorr fingerprint insertion algorithm...")
+        if secret_key is not None:
+            self.secret_key = secret_key
+        # it is assumed that the first column in the dataset is the primary key
+        if isinstance(dataset_name, datasets.Dataset):
+            self.dataset = dataset_name
+            relation = dataset_name.dataframe.copy()
+            if correlated_attributes is None:
+                correlated_attributes = dataset_name.correlated_attributes
+        else:
+            relation, _ = import_dataset_from_file(dataset_name)
+        # number of numerical attributes minus primary key
+        number_of_num_attributes = len(relation.select_dtypes(exclude='object').columns) - 1
+        # number of non-numerical attributes
+        number_of_cat_attributes = len(relation.select_dtypes(include='object').columns)
+        # total number of attributes
+        tot_attributes = number_of_num_attributes + number_of_cat_attributes
+        print("\tgamma: " + str(self.gamma) +
+              "\n\tk: " + str(self.k) +
+              "\n\tcorrelated attributes: " + str(correlated_attributes))
+
+        self.recipient_id = recipient_id
+        fingerprint = self.create_fingerprint(recipient_id, secret_key)
+        self.fingerprint = fingerprint
+        print("Inserting the fingerprint...\n")
+
+        start = time.time()
+        time_profile = {'query_time': 0, 'write_time': 0, 'read_time': 0, 'mark_time': 0}
+
+        # label encoder - needed for balltrees
+        categorical_attributes = relation.select_dtypes(include='object').columns
+        label_encoders = dict()
+        relation_enc = relation.copy()
+        for cat in categorical_attributes:
+            label_enc = LabelEncoder()
+            relation_enc[cat] = label_enc.fit_transform(relation[cat])
+            label_encoders[cat] = label_enc
+
+        correlated_attributes = parse_correlated_attrs(correlated_attributes, relation_enc)
+        # ball trees from user-specified or calculated correlated attributes; normalised dataset for better distance calculation
+        # relation_norm = (relation - relation.min()) / (relation.max() - relation.min())
+        self.balltree = init_balltrees(correlated_attributes, relation_enc,
+                                       self.dist_metric_discrete,
+                                       self.dist_metric_continuous, categorical_attributes=categorical_attributes)
+
+        fingerprinted_relation = relation.copy()
+        self.insertion_iter_log = []  # reset iteration log
+        for r in relation.iterrows():
+            # r[0] is an index of a row = primary key
+            # seed = concat(secret_key, primary_key)
+            r_vpk = vpk.record_vpk(r[1])
+            seed = int((self.secret_key << self.__primary_key_len) + r_vpk)  # first column must be primary key
+            random.seed(seed)
+
+            # selecting the tuple
+            if random.choices([0, 1], [1 / self.gamma, 1 - 1 / self.gamma]) == [0]:  # gamma can be a float
+                iteration = {'seed': seed, 'row_index': r[1].iloc[0]}
+                # selecting the attribute
+                # attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # +1 to skip the prim key
+                attribute_val = vpk.record_marking_attr(r[1])
+                attr_name = r[1][r[1] == attribute_val].index.tolist()[0]
+                read_start = time.time()
+                # attr_name = r[1].index[attr_idx]
+                # attribute_val = r[1].iloc[attr_idx]
+                # iteration['attribute'] = attr_name
+
+                read_end = time.time()
+                time_profile['read_time'] += read_end - read_start
+
+                # select fingerprint bit
+                fingerprint_idx = random.randint(0, _MAXINT) % self.fingerprint_bit_length
+                iteration['fingerprint_idx'] = fingerprint_idx
+
+                fingerprint_bit = fingerprint[fingerprint_idx]
+                iteration['fingerprint_bit'] = fingerprint_bit
+
+                # select mask and calculate the mark bit
+                mask_bit = random.randint(0, _MAXINT) % 2
+                iteration['mask_bit'] = mask_bit
+
+                mark_bit = (mask_bit + fingerprint_bit) % 2
+                iteration['mark_bit'] = mark_bit
+
+                marked_attribute = attribute_val
+                # fp information: if mark_bit = fp_bit xor mask_bit is 1 then take the most frequent value,
+                # # # otherwise one of the less frequent ones
+
+                # selecting attributes for knn search -> this is user specified
+                # get the index of a group of correlated attributes to attr; if attr is not correlated then return None
+                corr_group_index = next(
+                    (i for i, sublist in enumerate(correlated_attributes) if attr_name in sublist), None)
+                # if attr_name in correlated_attributes:
+                if corr_group_index is not None:
+                    other_attributes = correlated_attributes[corr_group_index].tolist().copy()
+                    other_attributes.remove(attr_name)
+                    bt = self.balltree[attr_name]
+                else:
+                    other_attributes = r[1].index.tolist().copy()
+                    other_attributes.remove(attr_name)
+                    if 'Id' in other_attributes:
+                        other_attributes.remove('Id')
+                    bt = self.balltree[attr_name]
+                if self.distance_based:
+                    querying_start = time.time()
+                    neighbours, dist = bt.query_radius([relation[other_attributes].loc[r[0]]], r=self.d,
+                                                       return_distance=True, sort_results=True)
+                    querying_end = time.time()
+                    time_profile['query_time'] += querying_end - querying_start
+                #                   print('Balltree querying in {} seconds.'.format(round(querying_end-querying_start, 8)))
+                else:
+                    # nondeterminism - non chosen tuples with max distance
+                    if not save_computation:
+                        querying_start = time.time()
+                        dist, neighbours = bt.query([relation[other_attributes].loc[r[0]]], k=self.k)
+                        querying_end = time.time()
+                        time_profile['query_time'] += querying_end - querying_start
+                        #                       print('Balltree querying (1st) in {} seconds.'.format(round(querying_end - querying_start, 8)))
+                        dist = dist[0].tolist()
+                        radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
+                        querying_start = time.time()
+                        neighbours, dist = bt.query_radius(
+                            [relation[other_attributes].loc[r[0]]], r=radius, return_distance=True,
+                            sort_results=True)  # the list of neighbours is first (and only) element of the returned list
+                        querying_end = time.time()
+                        time_profile['query_time'] += querying_end - querying_start
+                        #                        print('Balltree querying (2nd) in {} seconds.'.format(round(querying_end - querying_start, 8)))
+                        neighbours = neighbours[0].tolist()
+                    else:  # we allow the flag for saving computation which requires only one query function but might result in non-determinism
+                        querying_start = time.time()
+                        #                        print(relation[other_attributes].loc[r[0]])
+                        # query the normalised record
+                        dist, neighbours = bt.query([relation_enc[other_attributes].loc[r[0]]],
+                                                    k=3 * self.k)  # query with extra neighbourhs
+                        #                        print(dist)
+                        k_dist = dist[0][self.k - 1]  # Distance of the kth nearest neighbor
+                        neighbours = neighbours[0][dist[0] <= k_dist]  # Get k neighbours plus the ties
+                        querying_end = time.time()
+                        time_profile['query_time'] += querying_end - querying_start
+                #                        print('Balltree querying (efficient) in {} seconds.'.format(round(querying_end - querying_start, 8)))
+                iteration['neighbors'] = neighbours
+                iteration['dist'] = dist
+
+                marking_start = time.time()
+                neighbourhood = relation_enc.iloc[neighbours][attr_name].tolist()
+                if attr_name in categorical_attributes:
+                    marked_attribute = mark_categorical_value(neighbourhood, mark_bit)
+                    marked_attribute = label_encoders[attr_name].inverse_transform([marked_attribute])[0]
+                    iteration['new_value'] = marked_attribute
+                else:
+                    marked_attribute = mark_continuous_value(neighbourhood, mark_bit, seed=seed)
+                    iteration['new_value'] = marked_attribute
+
+                marking_end = time.time()
+                time_profile['mark_time'] += marking_end - marking_start
+
+                writing_time_start = time.time()
+                fingerprinted_relation.at[r[0], attr_name] = marked_attribute
+                self.insertion_iter_log.append(iteration)
+                writing_time_end = time.time()
+                time_profile['write_time'] += writing_time_end - writing_time_start
+        #                print('Writing one fingerprinted value in {} seconds.'.format(round(writing_time_end-writing_time_start, 8)))
+
+        # delabeling
+        for cat in categorical_attributes:
+            pass
+            # fingerprinted_relation[cat] = label_encoders[cat].inverse_transform(fingerprinted_relation[cat])
+
+        print("Fingerprint inserted.")
+        if secret_key is None:
+            print('shouldnt be here')
+            write_dataset(fingerprinted_relation, "categorical_neighbourhood", "blind/" + dataset_name,
+                          [self.gamma, self.xi],
+                          recipient_id)
+        runtime = time.time() - start
+        if runtime < 1:
+            print("Runtime: " + str(round(runtime * 1000, 2)) + " ms.")
+        else:
+            print("Runtime: " + str(round(runtime, 2)) + " sec.")
+        print(time_profile)
+        if outfile is not None:
+            fingerprinted_relation.to_csv(outfile, index=False)
+        return fingerprinted_relation
+
+    def detection_vpk(self, dataset, secret_key, correlated_attributes=None, original_columns=None,
+                  save_computation=True, balltree=None):
+        """
+
+        Args:
+            dataset:
+            secret_key:
+            primary_key:
+            correlated_attributes:
+            original_columns:
+            save_computation:
+
+        Returns:
+            recipient_no: identification of the recipient of detected fingerprint
+            detected_fp: detected fingerprint bitstring
+            count: array of bit-wise fingerprint votes
+
+        """
+        print("Start NCorr fingerprint detection algorithm ...")
+        print("\tgamma: " + str(self.gamma) +
+              "\n\tk: " + str(self.k) +
+              "\n\tfp length: " + str(self.fingerprint_bit_length) +
+              "\n\ttotal # recipients: " + str(self.number_of_recipients) +
+              "\n\tcorrelated attributes: " + str(correlated_attributes))
+
+        relation_fp = read_data(dataset)
+        self.relation_fp = relation_fp
+        # indices = list(relation_fp.dataframe.index)
+        # number of numerical attributes minus primary key
+        number_of_num_attributes = len(relation_fp.dataframe.select_dtypes(exclude='object').columns) - 1
+        number_of_cat_attributes = len(relation_fp.dataframe.select_dtypes(include='object').columns)
+        tot_attributes = number_of_num_attributes + number_of_cat_attributes
+        categorical_attributes = relation_fp.dataframe.select_dtypes(include='object').columns
+
+        attacked_columns = []
+        if original_columns is not None:  # aligning with original schema (in case of vertical attacks)
+            if "Id" in original_columns:
+                original_columns.remove("Id")
+            for orig_col in original_columns:
+                if orig_col not in relation_fp.columns:
+                    # fill in
+                    relation_fp.dataframe[orig_col] = 0
+                    attacked_columns.append(orig_col)
+            # rearrange in the original order
+            relation_fp.dataframe = relation_fp.dataframe[["Id"] + original_columns]
+            tot_attributes += len(attacked_columns)
+
+        # encode the categorical values
+        label_encoders = dict()
+        for cat in categorical_attributes:
+            label_enc = LabelEncoder()
+            relation_fp.dataframe[cat] = label_enc.fit_transform(relation_fp.dataframe[cat])
+            label_encoders[cat] = label_enc
+
+        start = time.time()
+        correlated_attributes = parse_correlated_attrs(correlated_attributes, relation_fp.dataframe)
+        relation_fp_norm = (relation_fp.dataframe - relation_fp.dataframe.min()) / (
+                    relation_fp.dataframe.max() - relation_fp.dataframe.min())
+        if balltree is None:
+            balltree = init_balltrees(correlated_attributes, relation_fp.dataframe.drop('Id', axis=1),
+                                      self.dist_metric_discrete, self.dist_metric_continuous,
+                                      categorical_attributes)
+
+        count = [[0, 0] for x in range(self.fingerprint_bit_length)]
+        self.detection_iter_log = []  # reset the iteration log
+        for r in relation_fp.dataframe.iterrows():
+            seed = int(
+                (secret_key << self.__primary_key_len) + r[1].iloc[0])  # primary key must be the first column
+            random.seed(seed)
+            # this tuple was marked
+            if random.choices([0, 1], [1 / self.gamma, 1 - 1 / self.gamma]) == [0]:
+                iteration = {'seed': seed, 'row_index': r[1].iloc[0]}
+
+                # this attribute was marked (skip the primary key)
+                attr_idx = random.randint(0, _MAXINT) % tot_attributes + 1  # add 1 to skip the primary key
+                attr_name = r[1].index[attr_idx]
+                if attr_name in attacked_columns:  # if this columns was deleted by VA, don't collect the votes
+                    continue
+                iteration['attribute'] = attr_name
+
+                attribute_val = r[1].iloc[attr_idx]
+                iteration['attribute_val'] = attribute_val
+
+                # fingerprint bit
+                fingerprint_idx = random.randint(0, _MAXINT) % self.fingerprint_bit_length
+                iteration['fingerprint_idx'] = fingerprint_idx
+
+                # mask
+                mask_bit = random.randint(0, _MAXINT) % 2
+                iteration['mask_bit'] = mask_bit
+
+                corr_group_index = next(
+                    (i for i, sublist in enumerate(correlated_attributes) if attr_name in sublist), None)
+                if corr_group_index is not None:  # if attr_name is in correlated attributes
+                    other_attributes = correlated_attributes[corr_group_index].tolist().copy()
+                    other_attributes.remove(attr_name)
+                    bt = balltree[attr_name]
+                else:
+                    other_attributes = r[1].index.tolist().copy()
+                    other_attributes.remove(attr_name)
+                    other_attributes.remove('Id')
+                    bt = balltree[attr_name]
+                if self.distance_based:
+                    neighbours, dist = bt.query_radius([relation_fp.dataframe[other_attributes].loc[r[1].iloc[0]]],
+                                                       r=self.d,
+                                                       return_distance=True, sort_results=True)
+                else:  # if it's neighbourhood-cardinality-based
+                    if not save_computation:
+                        # find the neighborhood of cardinality k (non-deterministic)
+                        dist, neighbours = bt.query([relation_fp.dataframe[other_attributes].loc[r[1].iloc[0]]],
+                                                    k=self.k)
+                        dist = dist[0].tolist()
+                        # solve nondeterminism: get all other elements of max distance in the neighbourhood
+                        radius = np.ceil(max(dist) * 10 ** 6) / 10 ** 6  # ceil the float max dist to 6th decimal
+                        neighbours, dist = bt.query_radius(
+                            [relation_fp.dataframe[other_attributes].loc[r[1].iloc[0]]], r=radius,
+                            return_distance=True,
+                            sort_results=True)
+                        neighbours = neighbours[
+                            0].tolist()  # the list of neighbours was first (and only) element of the returned list
+                        dist = dist[0].tolist()
+
+                    else:  # we allow potential non-determinism to reduce the execusion time
+                        dist, neighbours = bt.query([relation_fp.dataframe[other_attributes].loc[r[0]]],
+                                                    k=3 * self.k)
+                        k_dist = dist[0][self.k - 1]
+                        neighbours = neighbours[0][dist[0] <= k_dist]  # get k neighbours plus the ties
+
+                iteration['neighbors'] = neighbours
+                iteration['dist'] = dist
+
+                # check the frequencies of the values
+                neighbourhood = relation_fp.dataframe.iloc[neighbours][attr_name].tolist()  # target values
+                if len(set(neighbourhood)) == 1:
+                    # the mark bit is undecided so we don't update the votes
+                    iteration['mark_bit'] = -1
+                    iteration['fingerprint_bit'] = -1
+                else:
+                    mark_bit = get_mark_bit(is_categorical=(attr_name in categorical_attributes),
+                                            attribute_val=attribute_val, neighbours=neighbourhood,
+                                            relation_fp=relation_fp, attr_name=attr_name)
+                    fingerprint_bit = (mark_bit + mask_bit) % 2
+                    count[fingerprint_idx][fingerprint_bit] += 1
+                    iteration['mark_bit'] = mark_bit
+                    iteration['fingerprint_bit'] = fingerprint_bit
+
+                iteration['count_state'] = copy.deepcopy(count)
+
+                self.detection_iter_log.append(iteration)
+
+        # this fingerprint template will be upside-down from the real binary representation
+        fingerprint_template = [2] * self.fingerprint_bit_length
+        # recover fingerprint
+        for i in range(self.fingerprint_bit_length):
+            # certainty of a fingerprint value
+            T = 0.50
+            if count[i][0] + count[i][1] != 0:
+                if count[i][0] / (count[i][0] + count[i][1]) > T:
+                    fingerprint_template[i] = 0
+                elif count[i][1] / (count[i][0] + count[i][1]) > T:
+                    fingerprint_template[i] = 1
+
+        self.detected_fp = fingerprint_template
+        print("Fingerprint detected: " + list_to_string(self.detected_fp))
+        self.count = count
+        print(count)
+
+        # first step in fp attribution: exact matching scores
+        exact_match_scores = self.exact_matching_scores(fingerprint_template, secret_key)
+        print("The fingerprint is matched with probabilities:")
+        print(exact_match_scores)
+        #        recipient_no = self.detect_potential_traitor(fingerprint_template, secret_key)
+        #        if recipient_no >= 0:
+        #            print("Fingerprint belongs to Recipient " + str(recipient_no))
+        #        else:
+        #            print("None suspected.")
+        if self.fingerprint_code_type == 'tardos':
+            collusion_scores = tardos.score_users(fingerprint_template, secret_key, self.number_of_recipients)
+            print('Collusion scores: ', collusion_scores)
+        runtime = time.time() - start
+        if runtime < 1:
+            print("Runtime: " + str(int(runtime) * 1000) + " ms.")
         else:
             print("Runtime: " + str(round(runtime, 2)) + " sec.")
         # todo: define a return statement -- just the most likely recipient? Probability vec?

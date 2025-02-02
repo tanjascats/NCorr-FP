@@ -203,6 +203,7 @@ def collude_datasets_by_random_and_flipping(dataset_paths):
 
     # Randomly modify additional values in the DataFrame
     if num_disagreements > 0:
+        num_disagreements = int(0.1*num_disagreements)  # this may be a parameter, but fix for reducing complexity
         rows, cols = merged_df.shape
         total_elements = rows * cols
 
@@ -211,6 +212,8 @@ def collude_datasets_by_random_and_flipping(dataset_paths):
         for index in random_indices:
             row, col_idx = divmod(index, cols)
             col_name = merged_df.columns[col_idx]
+            if col_name == 'Id':
+                continue
             attribute_domain = np.unique(stacked[:, :, col_idx])
             merged_df.iloc[row, col_idx] = np.random.choice(attribute_domain)
 
