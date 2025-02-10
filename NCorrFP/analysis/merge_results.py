@@ -11,7 +11,7 @@ def merge_csv_files(directory_path):
     Args:
     directory_path: Path to the directory containing the CSV files.
     """
-    categories = ["collusion"]#, "vertical", "flipping", "clusterflipping", "clusterhorizontal", "clusterhorizontalexactparam", "clusterflippingexactparam"]
+    categories = ["clusterflippingexactparam", "clusterflipping"]#, "vertical", "flipping", "clusterflipping", "clusterhorizontal", "clusterhorizontalexactparam", "clusterflippingexactparam"]
     for category in categories:
         # Pattern to match the files for each category
         file_pattern = f"{directory_path}/robustness-{category}_adult*.csv"

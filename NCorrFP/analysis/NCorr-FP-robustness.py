@@ -573,14 +573,14 @@ def cluster_flipping(dataset='adult', save_results='robustness-clusterflipping')
                                                                     threshold_numcat=0.14)
     correlated_pairs_string = ["_".join(list(a)) for a in list(correlated_pairs_dict.keys())]
 
-    fp_params = {'gamma': [32],#8, 16, 32],  # 4, 8, 16, 32],
+    fp_params = {'gamma': [32, 16, 8, 4, 2],#8, 16, 32],  # 4, 8, 16, 32],
                  'k': [300, 450],
                  'fingerprint_length': [128],  # 128
                  'n_recipients': [20],
                  'sk': [100 + i for i in range(10)],
                  'id': [0],
                  'code': ['tardos']}  # 128
-    attack_strength = [0.3, 0.35, 0.4, 0.45, 0.5]#, 0.4, 0.45, 0.5, 0.55]
+    attack_strength = [0.6, 0.7, 0.8, 0.9]#, 0.4, 0.45, 0.5, 0.55]
     n_experiments = 3
     results = {key: [] for key in ['gamma', 'k', 'fingerprint_length', 'n_recipients', 'sk', 'id', 'code',
                                    'embedding_ratio',
@@ -845,14 +845,14 @@ def cluster_flipping_exact_param(dataset='adult', save_results='robustness-clust
                                                                     threshold_numcat=0.14)
     correlated_pairs_string = ["_".join(list(a)) for a in list(correlated_pairs_dict.keys())]
 
-    fp_params = {'gamma': [32],#8, 16, 32],  # 4, 8, 16, 32],
+    fp_params = {'gamma': [2, 4, 8, 16, 32],
                  'k': [300, 450],
                  'fingerprint_length': [128],  # 128
                  'n_recipients': [20],
                  'sk': [100 + i for i in range(10)],
                  'id': [0],
                  'code': ['tardos']}  # 128
-    attack_strength = [0.3, 0.35, 0.4, 0.45, 0.5]
+    attack_strength = [0.6, 0.7, 0.8, 0.9]
     n_experiments = 3
     results = {key: [] for key in ['gamma', 'k', 'fingerprint_length', 'n_recipients', 'sk', 'id', 'code',
                                    'embedding_ratio',
@@ -1109,12 +1109,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # collaboration attacks
-    collusion(args.dataset)
+#    collusion(args.dataset)
     # 1-user attack
 #    horizontal_attack()
 #    vertical_attack()
 #    flipping_attack()
-#    cluster_flipping()  # the second  most disruptive
+#    cluster_flipping()
 #    cluster_horizontal()
-#    cluster_flipping_exact_param()  # the most disruptive
+    cluster_flipping_exact_param()
 #    cluster_horizontal_exact_param()
