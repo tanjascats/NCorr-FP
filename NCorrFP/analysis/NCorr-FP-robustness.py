@@ -616,10 +616,11 @@ def cluster_flipping(dataset='adult', save_results='robustness-clusterflipping')
             buffer = 1.25
             for strength in attack_strength:
                 if buffer*strength <= 1:
-                    cluster = pd.read_csv('cluster_g1_k325_sk999.csv').head(int(buffer*strength*len(data.dataframe)))
+                    cluster = pd.read_csv(
+                        'clusters/cluster_g1_k325_sk999.csv').head(int(buffer * strength * len(data.dataframe)))
                     cluster.index = cluster['Id']
                 else:
-                    cluster = pd.read_csv('cluster_g1_k325_sk999.csv')
+                    cluster = pd.read_csv('clusters/cluster_g1_k325_sk999.csv')
                     cluster.index = cluster['Id']
                 for exp in range(n_experiments):
                     scheme = NCorrFP(gamma=param['gamma'], fingerprint_bit_length=param['fingerprint_length'],
@@ -752,10 +753,11 @@ def cluster_horizontal(dataset='adult', save_results='robustness-clusterhorizont
                 continue
             for strength in attack_strength:
                 if cluster_factor*strength <= 1:
-                    cluster = pd.read_csv('cluster_g1_k325_sk999.csv').head(int(cluster_factor*strength*len(data.dataframe)))
+                    cluster = pd.read_csv(
+                        'clusters/cluster_g1_k325_sk999.csv').head(int(cluster_factor * strength * len(data.dataframe)))
                     cluster.index = cluster['Id']
                 else:
-                    cluster = pd.read_csv('cluster_g1_k325_sk999.csv')
+                    cluster = pd.read_csv('clusters/cluster_g1_k325_sk999.csv')
                     cluster.index = cluster['Id']
                 for exp in range(n_experiments):
                     scheme = NCorrFP(gamma=param['gamma'], fingerprint_bit_length=param['fingerprint_length'],

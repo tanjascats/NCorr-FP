@@ -14,7 +14,7 @@ def merge_csv_files(directory_path):
     categories = ["clusterflippingexactparam", "clusterflipping"]#, "vertical", "flipping", "clusterflipping", "clusterhorizontal", "clusterhorizontalexactparam", "clusterflippingexactparam"]
     for category in categories:
         # Pattern to match the files for each category
-        file_pattern = f"{directory_path}/robustness-{category}_adult*.csv"
+        file_pattern = f"{directory_path}/partial/robustness-{category}_adult*.csv"
 
         # List all files that match the pattern
         csv_files = glob.glob(file_pattern)
@@ -37,4 +37,4 @@ def merge_csv_files(directory_path):
 
 
 # Example usage
-merge_csv_files('.')
+merge_csv_files('..')

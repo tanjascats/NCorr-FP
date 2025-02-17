@@ -29,8 +29,8 @@ def trim_whitespace(image_path):
 
 
 # Usage
-input_image_path = 'NCorrFP/analysis/pairwise_hist_adult_mss.png'
-output_image_path = 'NCorrFP/analysis/pairwise_hist_adult_mss.png'
+input_image_path = 'NCorrFP/analysis/figures/pairwise_hist_adult_mss.png'
+output_image_path = 'NCorrFP/analysis/figures/pairwise_hist_adult_mss.png'
 
 trimmed_image = trim_whitespace(input_image_path)
 trimmed_image.save(output_image_path)

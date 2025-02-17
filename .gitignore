@@ -3,3 +3,8 @@
 __pycache__/
 NCorrFP/robustness_analysis/log/test/
 fp_codes/tardos_codes_old.py
+NCorrFP/analysis/results/partial/
+NCorrFP/analysis/archive_results/
+attacks/collusion/
+trim_whitespace.py
+temp_files/
