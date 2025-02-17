@@ -31,7 +31,7 @@ During the fingerprint detection, this process is reversed to decode the embedde
 
 The upper row represents the votes for bit 0 per bit-position, and the lower row represents the votes for bit 1 per bit-position. According to the majority vote, the fingerprint is decided to be the 16-bit sequence: 0100000001100100 which in a correct setup is the exact sequence associated to the recipient of the data copy. In reality, the fingerprint sequences are much longer (>100-bit) to ensure a small mutual overlap.
 
-See the full demo at: [NCorrFP-demo-continuous.ipynb](https://github.com/tanjascats/NCorr-FP/blob/main/NCorrFP-demo-continuous.ipynb)
+See the full demo at: [NCorrFP-demo-continuous.ipynb](NCorrFP/notebooks/NCorrFP_demo_continuous_synth.ipynb)
 
 
 ## Citation
