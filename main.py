@@ -24,13 +24,35 @@ def test_knn():
 
 
 def test_vpk():
-    scheme = NCorrFP(gamma=5, fingerprint_bit_length=128)
+    scheme = NCorrFP(gamma=2, fingerprint_bit_length=128)
     fingerprinted_data = scheme.insertion_vpk('adult-vpk', secret_key=101, recipient_id=4, outfile='adult_vpk.csv')
-
+    print(fingerprinted_data.head())
+    print(fingerprinted_data.columns)
+    # fingerprinted_data = pd.read_csv('adult_vpk.csv')
     suspect = scheme.detection_vpk(fingerprinted_data, secret_key=101,
                                correlated_attributes=['relationship', 'marital-status', 'occupation', 'workclass',
                                                       'education-num'])
     print(suspect)
+
+
+def test_vpk_deletion():
+    deletion_size = 3
+    scheme = NCorrFP(gamma=2, fingerprint_bit_length=128)
+    fingerprinted_data = scheme.insertion_vpk('adult-vpk', secret_key=101, recipient_id=4, outfile='adult_vpk.csv')
+    correlated = ['relationship', 'marital-status', 'occupation', 'workclass', 'education-num']
+    #fingerprinted_data = pd.read_csv('adult_vpk.csv')
+    total = 0
+    for i in range(10):
+        remove = np.random.choice(list(fingerprinted_data.columns.drop(correlated)), size=deletion_size, replace=False)
+        attacked_data = fingerprinted_data.drop(remove, axis=1)
+        dc, _, _ = scheme.detection_vpk(attacked_data, secret_key=101,
+                                       correlated_attributes=correlated)
+        print(dc)
+        total += dc[4]
+    total = total / 10
+    print(total)
+    return total
+
 
 def knn_adult_census():
     scheme = NCorrFP(gamma=10, fingerprint_bit_length=32)
@@ -306,4 +328,4 @@ if __name__ == '__main__':
     #test_detection_continuous()
  #   data = datasets.Adult()
  #   scheme = NCorrFP(gamma=2, fingerprint_bit_length=64, k=100, number_of_recipients=10, fingerprint_code_type='hash')
-    test_vpk()
+    test_vpk_deletion()

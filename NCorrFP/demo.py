@@ -1,7 +1,11 @@
+import matplotlib.pyplot as plt
+
 from utils import *
 from .NCorrFP import *
 from sklearn.preprocessing import LabelEncoder
 from matplotlib import colors
+from matplotlib.patches import Patch
+
 
 _MAXINT = 2 ** 31 - 1
 
@@ -498,7 +502,17 @@ class Demo():
         # Display the plot
         plt.show()
 
-    def show_detection_iteration(self, iteration):
+    def show_detection_iteration(self, iteration, plotting_style='notebook', save_fig=None):
+        """
+
+        Args:
+            iteration (int): # of iteration
+            plotting_style (string): ["notebook", "paper"]
+            save_fig: path to destination file of the figure
+
+        Returns:
+
+        """
         print("Detecting from record at idx: " + str(self.detection_iter_log[iteration]['row_index']))
         print("Detecting from attribute: " + str(self.detection_iter_log[iteration]['attribute']))
         print(self.fingerprinted_data.iloc[[iteration]])
@@ -507,6 +521,8 @@ class Demo():
         print('Fingerpritned value: ' + str(fingerprinted_value))
         target_values_det = self.fingerprinted_data.iloc[self.detection_iter_log[iteration]['neighbors']][
             self.detection_iter_log[iteration]['attribute']].tolist()
+        target_values_ins = list(self.relation.iloc[self.insertion_iter_log[iteration]['neighbors']][
+                                     self.insertion_iter_log[iteration]['attribute']])
         print("----------------------------------------------------------")
         print("Obtaining neighbourhood....")
         print('Target values:' + str(target_values_det))
@@ -518,31 +534,98 @@ class Demo():
       #                       dense=mark_bit, plot=True, seed=self.insertion_iter_log[iter]['seed'])
 
             x_det, pdf_values_det, masked_pdf_det = self.values_for_plot_distribution(target_values_det)
-            target_values_ins = list(self.relation.iloc[self.insertion_iter_log[iteration]['neighbors']][self.insertion_iter_log[iteration]['attribute']])
             x_ins, pdf_values_ins, masked_pdf_ins = self.values_for_plot_distribution(target_values_ins)
+            masked_pdf_det = [-0.01 if x == 0 else x for x in masked_pdf_det]  # cosmetic change for plotting
+            masked_pdf_ins = [-0.01 if x == 0 else x for x in masked_pdf_ins]
+            threshold_det = min([mpdf for mpdf in masked_pdf_det if mpdf > 0])
+            threshold_ins = min([mpdf for mpdf in masked_pdf_ins if mpdf > 0])
 
-            fig, axs = plt.subplots(1, 2, sharey=True, sharex=True, figsize=(10, 4))
+            fig, axs = plt.subplots(1, 2, sharey=True, sharex=True, figsize=(14, 4))
 
-            axs[0].plot(x_det, pdf_values_det, label='Original PDF\n (estimate)')
-            axs[0].plot(x_det, masked_pdf_det, label='Modified PDF\n ({}th percentile)'.format(int(100 * 0.75)))
-            axs[0].hist(target_values_det, bins=10, density=True, alpha=0.3, label='Neighbourhood\n data points')
-            axs[0].scatter(fingerprinted_value, 0, color='red', label='Marked value', zorder=5)
-            axs[0].set_ylabel('Density')
-            axs[0].set_xlabel('Values')
-            axs[0].set_title('Fingerprinted data')
-            axs[0].legend(prop={'size': 8})
+            axs[1].plot(x_det, pdf_values_det, label='Low density', linewidth=1.8)
+            axs[1].plot(x_det, masked_pdf_det, label='High density\n ({}th percentile)'.format(int(100 * 0.75)), linewidth=1.8)
+            axs[1].hist(target_values_det, bins=10, density=True, alpha=0.3, label='Neighbourhood\n data points')
+            axs[1].scatter(fingerprinted_value, 0.0006, color='red', label='Marked value', zorder=5, marker='v')
+            axs[1].axhline(y=threshold_det, color='grey', linestyle='--')#, label=f'$\tau_p$')
+            axs[1].set_ylim(bottom=0.0)
+            axs[1].set_ylabel('PDF', fontsize=10)
+            axs[1].set_xlabel('Target values', fontsize=10)
+            axs[1].tick_params(axis='both', which='major', labelsize=10)
+            axs[1].set_title('Fingerprinted data', fontsize=10)
+            axs[1].legend(prop={'size':  10})
 
-            axs[1].plot(x_ins, pdf_values_ins, label='Original PDF\n (estimate)')
-            axs[1].plot(x_ins, masked_pdf_ins, label='Modified PDF\n ({}th percentile)'.format(int(100 * 0.75)))
-            axs[1].hist(target_values_ins, bins=10, density=True, alpha=0.3, label='Neighbourhood\n data points')
-            axs[1].scatter(self.insertion_iter_log[iteration]['new_value'], 0, color='red', label='Marked value', zorder=5)
-            axs[1].set_ylabel('Density')
-            axs[1].set_xlabel('Values')
-            axs[1].set_title('Original data')
-            axs[1].legend(prop={'size': 8})
+            axs[0].plot(x_ins, pdf_values_ins, label='Low density', linewidth=1.8)
+            axs[0].plot(x_ins, masked_pdf_ins, label='High density\n ({}th percentile)'.format(int(100 * 0.75)), linewidth=1.8)
+            axs[0].hist(target_values_ins, bins=10, density=True, alpha=0.3, label='Neighbourhood\n data points')
+            axs[0].scatter(self.insertion_iter_log[iteration]['new_value'], 0.0006, color='red', label='Marked value', zorder=5, marker='v')
+            axs[0].axhline(y=threshold_ins, color='grey', linestyle='--')#, label=f'$\tau_p$')
+ #           axs[0].axhline(y=0.0001, color='black')
+            axs[0].set_ylim(bottom=0.0)
+            axs[0].set_ylabel('PDF', fontsize=10)
+            axs[0].set_xlabel('Target values', fontsize=10)
+            axs[0].tick_params(axis='both', which='major', labelsize=10)
+            axs[0].set_title('Original data', fontsize=10)
+            axs[0].legend(prop={'size': 10})
         # categorical attribute
         else:
-            pass
+            frequency_counts_ins = Counter(target_values_ins)
+            total_ins = sum(frequency_counts_ins.values())
+            frequency_counts_det = Counter(target_values_det)
+            total_det = sum(frequency_counts_det.values())
+            # Sort categories by their frequency
+            sorted_categories_ins = sorted(frequency_counts_ins, key=frequency_counts_ins.get, reverse=True)
+            sorted_categories_det = sorted(frequency_counts_det, key=frequency_counts_det.get, reverse=True)
+
+            # Calculate cumulative frequency and identify cutoff
+            cumulative_frequency = np.cumsum([frequency_counts_ins[cat] for cat in sorted_categories_ins]) / total_ins
+            cutoff_index = np.where(cumulative_frequency >= 0.75)[0][0]
+            # Ensure there's at least one category in the high-frequency group
+            if cutoff_index == len(sorted_categories_ins) - 1:
+                cutoff_index -= 1
+
+            # Categories for high and low frequencies
+            low_frequency_categories = sorted_categories_ins[:cutoff_index + 1]
+            high_frequency_categories = sorted_categories_ins[cutoff_index + 1:]
+
+            # Colors by category
+            colors = [
+                plt.rcParams['axes.prop_cycle'].by_key()['color'][0] if cat in high_frequency_categories
+                else plt.rcParams['axes.prop_cycle'].by_key()['color'][1]
+                for cat in sorted_categories_ins]
+
+            # Plotting
+            fig, axes = plt.subplots(1, 2, figsize=(14, 4))
+            axes[0].bar(sorted_categories_ins, [frequency_counts_ins[cat] for cat in sorted_categories_ins], color=colors)
+            # 'target_values_ins' histogram
+            axes[0].set_title('Original data', fontsize=10)
+            axes[0].set_xlabel('Target values', fontsize=10)
+            axes[0].set_ylabel('Frequency', fontsize=10)
+            axes[0].bar(self.insertion_iter_log[iteration]['new_value'],
+                        frequency_counts_ins[self.insertion_iter_log[iteration]['new_value']],
+                        color='none', edgecolor="red")
+            axes[0].set_xticklabels(sorted_categories_ins, rotation=35)
+
+            axes[1].bar(sorted_categories_ins, [frequency_counts_det[cat] for cat in sorted_categories_det], color=colors)
+            axes[1].set_xticklabels(sorted_categories_ins, rotation=35)
+            axes[1].bar(self.insertion_iter_log[iteration]['new_value'],
+                        frequency_counts_ins[self.insertion_iter_log[iteration]['new_value']],
+                        color='none', edgecolor="red")
+            axes[1].set_title('Fingerprinted data', fontsize=10)
+            axes[1].set_xlabel('Target values', fontsize=10)
+            axes[1].set_ylabel('Frequency', fontsize=10)
+
+            # Create legend handles
+            legend_elements = [
+                Patch(facecolor=plt.rcParams['axes.prop_cycle'].by_key()['color'][0], edgecolor='black', label='High frequency'),
+                Patch(facecolor=plt.rcParams['axes.prop_cycle'].by_key()['color'][1], edgecolor='black', label='Low frequency'),
+                Patch(facecolor='none', edgecolor='red', label='New/Detected value')
+            ]
+            axes[0].legend(handles=legend_elements, loc='best')
+            axes[1].legend(handles=legend_elements, loc='best')
+
+        if save_fig is not None:
+            plt.tight_layout()
+            plt.savefig(save_fig, dpi=300)
 
         print(
             "\n--> Observing the distribution of target attribute {} below...".format(self.detection_iter_log[iteration]['attribute']))

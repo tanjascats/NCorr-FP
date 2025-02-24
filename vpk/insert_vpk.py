@@ -22,7 +22,7 @@ def add_virtual_primary_key(csv_file_path):
     # Define maximum integer value (here we use 2^63 - 1)
     MAX = 1048576  #2 ** 63 - 1
 
-    def compute_virtual_pk(row, n_lowest_hashes=7):
+    def compute_virtual_pk(row, n_lowest_hashes=7):  # <--- adjust vpk parameters here
         # Compute absolute hash values for each cell (convert cell to string)
         hash_values = [abs(hash(str(val))) for val in row]
         # Sort the hash values in ascending order
@@ -55,4 +55,4 @@ if __name__ == '__main__':
     print(data_with_vpk.head(100))
     print(len(data_with_vpk['Id'].unique()))
     print(len(data_with_vpk['Id']))
-    # data_with_vpk.to_csv("output_with_id.csv", index=False)
+    data_with_vpk.to_csv("output_with_id.csv", index=False)
