@@ -8,3 +8,5 @@ NCorrFP/analysis/archive_results/
 attacks/collusion/
 trim_whitespace.py
 temp_files/
+NCorrFP/notebooks/fp_model_demo.pkl
+

@@ -1399,7 +1399,6 @@ class NCorrFP():
             print("Runtime: " + str(int(runtime) * 1000) + " ms.")
         else:
             print("Runtime: " + str(round(runtime, 2)) + " sec.")
-        # todo: define a return statement -- just the most likely recipient? Probability vec?
         return fingerprint_template, count, exact_match_scores
 
     def detect_colluders(self, pirate_fingerprint, secret_key, threshold=1):
