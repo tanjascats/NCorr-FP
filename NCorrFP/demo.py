@@ -416,11 +416,11 @@ class Demo():
         print("The fingerprinted record is:")
         print(self.fingerprinted_data.iloc[[iter]])
 
-    def values_for_plot_distribution(self, target_values):
+    def values_for_plot_distribution(self, target_values, n_points=100):
         data = target_values
         kde = gaussian_kde(data)
         # Create a range of values to evaluate the PDF
-        x = np.linspace(min(data), max(data), 100)
+        x = np.linspace(min(data), max(data), n_points)
         pdf_values = kde(x)
 
         threshold = np.percentile(pdf_values, 0.75 * 100)
@@ -502,7 +502,7 @@ class Demo():
         # Display the plot
         plt.show()
 
-    def show_detection_iteration(self, iteration, plotting_style='notebook', save_fig=None):
+    def show_detection_iteration(self, iteration, plotting_style='notebook', n_points=100, save_fig=None):
         """
 
         Args:
@@ -533,8 +533,8 @@ class Demo():
       #                                     self.insertion_iter_log[iter]['attribute']]), percent=0.75,
       #                       dense=mark_bit, plot=True, seed=self.insertion_iter_log[iter]['seed'])
 
-            x_det, pdf_values_det, masked_pdf_det = self.values_for_plot_distribution(target_values_det)
-            x_ins, pdf_values_ins, masked_pdf_ins = self.values_for_plot_distribution(target_values_ins)
+            x_det, pdf_values_det, masked_pdf_det = self.values_for_plot_distribution(target_values_det, n_points=n_points)
+            x_ins, pdf_values_ins, masked_pdf_ins = self.values_for_plot_distribution(target_values_ins, n_points=n_points)
             masked_pdf_det = [-0.01 if x == 0 else x for x in masked_pdf_det]  # cosmetic change for plotting
             masked_pdf_ins = [-0.01 if x == 0 else x for x in masked_pdf_ins]
             threshold_det = min([mpdf for mpdf in masked_pdf_det if mpdf > 0])
@@ -616,8 +616,8 @@ class Demo():
 
             # Create legend handles
             legend_elements = [
-                Patch(facecolor=plt.rcParams['axes.prop_cycle'].by_key()['color'][0], edgecolor='black', label='High frequency'),
-                Patch(facecolor=plt.rcParams['axes.prop_cycle'].by_key()['color'][1], edgecolor='black', label='Low frequency'),
+                Patch(facecolor=plt.rcParams['axes.prop_cycle'].by_key()['color'][0], edgecolor='black', label='Low frequency'),
+                Patch(facecolor=plt.rcParams['axes.prop_cycle'].by_key()['color'][1], edgecolor='black', label='High frequency'),
                 Patch(facecolor='none', edgecolor='red', label='New/Detected value')
             ]
             axes[0].legend(handles=legend_elements, loc='best')

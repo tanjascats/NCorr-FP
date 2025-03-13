@@ -26017,7 +26017,7 @@ Id,age,workclass,fnlwgt,education,education-num,marital-status,occupation,relati
 26015,31,Private,87535,Some-college,10,Never-married,Machine-op-inspct,Not-in-family,White,Female,0,0,25,United-States,<=50K
 26016,17,Local-gov,175587,11th,7,Never-married,Protective-serv,Own-child,White,Male,0,0,30,United-States,<=50K
 26017,25,Private,242700,Some-college,10,Never-married,Transport-moving,Not-in-family,White,Male,10520,0,26,United-States,>50K
-26018,23,Private,161478,Some-college,10,Separated,Other-service,Own-child,Asian-Pac-Islander,Female,0,0,23,United-States,<=50K
+26018,23,Private,161478,Some-college,10,Divorced,Other-service,Own-child,Asian-Pac-Islander,Female,0,0,23,United-States,<=50K
 26019,25,Private,51498,12th,8,Never-married,Other-service,Other-relative,White,Male,0,0,40,United-States,<=50K
 26020,47,Private,220124,HS-grad,9,Never-married,Craft-repair,Not-in-family,White,Male,0,0,40,United-States,<=50K
 26021,39,Private,188503,Bachelors,13,Married-civ-spouse,Exec-managerial,Wife,White,Female,0,0,60,United-States,>50K
@@ -26132,7 +26132,7 @@ Id,age,workclass,fnlwgt,education,education-num,marital-status,occupation,relati
 26130,53,Self-emp-not-inc,46704,Masters,14,Married-civ-spouse,Prof-specialty,Husband,White,Male,0,0,50,United-States,>50K
 26131,43,Private,119721,Bachelors,13,Married-civ-spouse,Exec-managerial,Husband,White,Male,0,0,40,United-States,<=50K
 26132,41,State-gov,58930,Bachelors,13,Never-married,Adm-clerical,Not-in-family,White,Female,0,0,40,United-States,<=50K
-26133,35,Private,247750,HS-grad,9,Widowed,Other-service,Own-child,Black,Male,0,0,40,United-States,<=50K
+26133,35,Private,247750,HS-grad,9,Widowed,Other-service,Other-relative,Black,Male,0,0,40,United-States,<=50K
 26134,48,Private,67725,Bachelors,13,Married-civ-spouse,Sales,Husband,White,Male,0,0,45,United-States,<=50K
 26135,28,State-gov,200775,Masters,14,Married-civ-spouse,Exec-managerial,Wife,White,Female,0,0,40,United-States,<=50K
 26136,44,Private,183542,Bachelors,13,Widowed,Prof-specialty,Unmarried,White,Female,0,0,32,United-States,<=50K

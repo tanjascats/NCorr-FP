@@ -6,7 +6,7 @@ A fingerprint is a personalised, secret piece of information identifying both th
 
 The fingerprint system is a two-stage process: 
 
-![fingerprinting-system](https://github.com/tanjascats/NCorr-FP/blob/main/figures/fingerprinting-system.jpg)
+![fingerprinting-system](static/images/fingerprinting-system.jpg)
 
 The main properties of the fingerprinting system include:
 - security - without access to the secret key, the fingerprint detection process cannot be performed correctly
@@ -23,15 +23,15 @@ Building upon our earlier non-blind approach [4], the fingerprint is embedded by
 A fingerprint is an _L_-bit sequence where each bit determines how the new value will be sampled at a pseudo-random position in the dataset [5]. For each selected data value, there is a 50% chance the new value will be sampled from a low-density area of the value distribution in similar records and a 50% chance to be sampled from a high-density area of the value distribution in similar records. 
 For example, below we show how a value distribution in similar records (the _neighbourhood_) might look like for a chosen data value. If the marking bit is 0 as depicted below, the new marked value is sampled from the low-density area (e.g. below 75th percentile). 
 
-![demo-sampling](https://github.com/tanjascats/NCorr-FP/blob/main/figures/demo.png)
+![demo-sampling](static/images/demo.png)
 
 During the fingerprint detection, this process is reversed to decode the embedded bit. Hence, if the value falls in the low-density area, the embedded bit is assumed to be 0, otherwise 1. These extracted bit assumptions are added to the voting system. Each of the _L_ fingerprint bit gets assigned votes for the bit being 0 or 1. For _L_=16, the final voting might look like this:
 
-![demo-votes](figures/demo-fpvotes.png)
+![demo-votes](static/images/demo-fpvotes.png)
 
 The upper row represents the votes for bit 0 per bit-position, and the lower row represents the votes for bit 1 per bit-position. According to the majority vote, the fingerprint is decided to be the 16-bit sequence: 0100000001100100 which in a correct setup is the exact sequence associated to the recipient of the data copy. In reality, the fingerprint sequences are much longer (>100-bit) to ensure a small mutual overlap.
 
-See the full demo at: [NCorrFP-demo-continuous.ipynb](NCorrFP/notebooks/NCorrFP_demo_continuous_synth.ipynb)
+See the full demo at: [NCorrFP-demo-continuous.ipynb](../NCorrFP/notebooks/NCorrFP_demo_continuous_synth.ipynb)
 
 
 ## Citation
